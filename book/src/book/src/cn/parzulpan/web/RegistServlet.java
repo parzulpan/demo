@@ -34,19 +34,31 @@ public class RegistServlet extends HttpServlet {
             if (userService.checkUsername(username)) {
                 // 打印信息
                 System.out.println("用户名 " + username + " 已存在！");
+
+                // 把错误信息，回显的表单项信息，保存到 Request 域中
+                request.setAttribute("msg", "用户名已存在！");
+                request.setAttribute("username", username);
+                request.setAttribute("email", email);
+
                 // 跳回注册页面
-                request.getRequestDispatcher("/pages/user/regist.html").forward(request, response);
+                request.getRequestDispatcher("/pages/user/regist.jsp").forward(request, response);
             } else {
                 // 保存到数据库
                 userService.regist(new User(null, username, password, email));
                 // 跳到注册成功页面
-                request.getRequestDispatcher("/pages/user/regist_success.html").forward(request, response);
+                request.getRequestDispatcher("/pages/user/regist_success.jsp").forward(request, response);
             }
         } else {
             // 打印信息
             System.out.println("验证码 " + code + " 错误！");
+
+            // 把错误信息，回显的表单项信息，保存到 Request 域中
+            request.setAttribute("msg", "验证码错误！");
+            request.setAttribute("username", username);
+            request.setAttribute("email", email);
+
             // 跳回注册页面
-            request.getRequestDispatcher("/pages/user/regist.html").forward(request, response);
+            request.getRequestDispatcher("/pages/user/regist.jsp").forward(request, response);
         }
     }
 

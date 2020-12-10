@@ -29,10 +29,13 @@ public class LoginServlet extends HttpServlet {
         if (user == null) {
             // 登录失败
             System.out.println("登录失败！");
-            request.getRequestDispatcher("/pages/user/login.html").forward(request, response);
+            // 把错误信息，回显的表单项信息，保存到 Request 域中
+            request.setAttribute("msg", "用户名或密码错误！");
+            request.setAttribute("username", username);
+            request.getRequestDispatcher("/pages/user/login.jsp").forward(request, response);
         } else {
             System.out.println("登录成功！");
-            request.getRequestDispatcher("/pages/user/login_success.html").forward(request, response);
+            request.getRequestDispatcher("/pages/user/login_success.jsp").forward(request, response);
         }
 
 

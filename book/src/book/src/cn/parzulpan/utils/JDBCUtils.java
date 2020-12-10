@@ -14,7 +14,7 @@ import java.util.Properties;
 /**
  * @Author : parzulpan
  * @Time : 2020-12-08
- * @Desc : 操作数据库的工具类
+ * @Desc : JDBCUtils 工具类
  */
 
 public class JDBCUtils {

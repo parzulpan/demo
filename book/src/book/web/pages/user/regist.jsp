@@ -1,20 +1,19 @@
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 	<title>购会员注册页面</title>
-	<!--写 base 标签，永远固定相对路径跳转的结果-->
-	<base href="http://localhost:8080/book/">
 
-	<!--修改 base 标签对页面中所有相对路径的影响-->
-	<link type="text/css" rel="stylesheet" href="static/css/style.css" >
+	<%--静态包含css、jquery、base 标签--%>
+	<%@ include file="/pages/common/head.jsp"%>
+
 	<style type="text/css">
 		.login_form{
 			height:420px;
 			margin-top: 25px;
 		}
 	</style>
-	<script type="text/javascript" src="static/script/jquery.js"></script>
 	<script type="text/javascript">
 		$(function() {
 			$("#sub_btn").click(function () {
@@ -88,14 +87,26 @@
 						<div class="login_box">
 							<div class="tit">
 								<h1>注册购会员</h1>
-								<span class="errorMsg"></span>
+								<span class="errorMsg">
+<%--									输出回显信息--%>
+<%--									<%=request.getAttribute("msg")==null?"":request.getAttribute("msg")%>--%>
+<%--									使用 EL 表达式 简化回显信息--%>
+									${requestScope.msg}
+								</span>
 							</div>
 							<div class="form">
 <!--								修改注册表单的提交地址和请求方式-->
-<!--								<form action="regist_success.html">-->
-								<form action="registServlet" method="post">
+<!--								<form action="regist_success.jsp">-->
+<%--								<form action="registServlet" method="post">--%>
+<%--								添加隐藏域和修改请求地址--%>
+								<form action="userServlet" method="post">
+									<input type="hidden" name="action" value="regist"/>
 									<label>用户名称：</label>
 									<label for="username"></label><input class="itxt" type="text" placeholder="请输入用户名"
+<%--																		 输出回显信息--%>
+<%--																		 value="<%=request.getAttribute("username")==null?"":request.getAttribute("username")%>"--%>
+<%--																		 使用 EL 表达式 简化回显信息--%>
+																		 value="${requestScope.username}"
 																		 autocomplete="off" tabindex="1" name="username" id="username" />
 									<br />
 									<br />
@@ -111,6 +122,10 @@
 									<br />
 									<label>电子邮件：</label>
 									<label for="email"></label><input class="itxt" type="text" placeholder="请输入邮箱地址"
+<%--																	  输出回显信息--%>
+<%--																	  value="<%=request.getAttribute("email")==null?"":request.getAttribute("email")%>"--%>
+<%--																	  使用 EL 表达式 简化回显信息--%>
+																	  value="${requestScope.email}"
 																	  autocomplete="off" tabindex="1" name="email" id="email" />
 									<br />
 									<br />
@@ -129,10 +144,9 @@
 					</div>
 				</div>
 			</div>
-		<div id="bottom">
-			<span>
-				购书城.Copyright &copy;2015
-			</span>
-		</div>
+
+		<%--静态包含每个页面的页脚--%>
+		<%@ include file="/pages/common/footer.jsp"%>
+
 </body>
 </html>
