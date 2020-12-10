@@ -122,7 +122,7 @@
 * 如果登陆失败，返回用户名或者密码错误信息
 * 如果登录成功，返回登陆成功信息
 
-## 阶段四 动态化及局部优化
+## 阶段三 动态化及局部优化
 
 为了动态提示信息，所以需要动态化。
 
@@ -340,6 +340,665 @@ BeanUtils 它不是 Jdk 的类。而是第三方的工具类。所以需要导�
 ```
 
 ## 阶段五 图书的增删改查
+
+### MVC 概念
+
+MVC 即 Model 模型、View 视图、Controller 控制器。MVC 最早出现在 JavaEE 三层中的 Web 层，它可以有效的指导 Web 层的代码如何有效分离，单独工作。
+
+* Model 模型：将与业务逻辑相关的数据封装为具体的 JavaBean 类，其中不掺杂任何与数据处理相关的代码。（JavaBean、Domain、Entity）
+* View 视图：只负责数据和界面的显示，不接受任何与显示数据无关的代码，便于程序员和美工的分工合作。（JSP、HTML）
+* Controller 控制器：只负责接收请求，调用业务层的代码处理请求，然后派发页面（转到某个页面或者是重定向到某个页面），是一个“调度者”的角色。（Servlet）
+
+MVC 的作用是为降低耦合，让代码合理分层，方便后期升级和维护。
+
+### 图书模块
+
+实现图书的增删改查。
+
+#### 编写数据库表
+
+```sql
+drop table t_book;
+
+create table t_book(
+    `id` int primary key auto_increment,
+    `name` varchar(200),
+    `author` varchar(100),
+    `price` decimal(11, 2),
+    `sales` int,
+    `stock` int,
+    `imgPath` varchar(200)
+);
+
+insert into t_book(`id`, `name`, `author`, `price`, `sales`, `stock`, `imgPath`) value
+    (null , 'Java 从入门到放弃' , '大哥' , 80 , 9999 , 9 , 'static/img/default.jpg'),
+    (null , '数据结构与算法' , '严敏君' , 78.5 , 6 , 13 , 'static/img/default.jpg'),
+    (null , '怎样拐跑别人的媳妇' , '龙伍' , 68, 99999 , 52 , 'static/img/default.jpg'),
+    (null , 'C++编程思想' , '二哥' , 45.5 , 14 , 95 , 'static/img/default.jpg'),
+    (null , '蛋炒饭' , '周星星' , 9.9, 12 , 53 , 'static/img/default.jpg'),
+    (null , '赌神' , '龙伍' , 66.5, 125 , 535 , 'static/img/default.jpg'),
+    (null , 'Java编程思想' , '阳哥' , 99.5 , 47 , 36 , 'static/img/default.jpg'),
+    (null , 'JavaScript从入门到精通' , '婷姐' , 9.9 , 85 , 95 , 'static/img/default.jpg'),
+    (null , 'Cocos2d-x游戏编程入门' , '大哥' , 49, 52 , 62 , 'static/img/default.jpg'),
+    (null , 'C语言程序设计' , '谭浩强' , 28 , 52 , 74 , 'static/img/default.jpg'),
+    (null , 'Lua语言程序设计' , '雷丰阳' , 51.5 , 48 , 82 , 'static/img/default.jpg'),
+    (null , '西游记' , '罗贯中' , 12, 19 , 9999 , 'static/img/default.jpg'),
+    (null , '水浒传' , '华仔' , 33.05 , 22 , 88 , 'static/img/default.jpg'),
+    (null , '操作系统原理' , '刘优' , 133.05 , 122 , 188 , 'static/img/default.jpg'),
+    (null , '数据结构 java版' , '封大神' , 173.15 , 21 , 81 , 'static/img/default.jpg'),
+    (null , 'UNIX高级环境编程' , '乐天' , 99.15 , 210 , 810 , 'static/img/default.jpg'),
+    (null , 'JavaScript高级编程' , '大哥' , 69.15 , 210 , 810 , 'static/img/default.jpg'),
+    (null , '大话设计模式' , '大哥' , 89.15 , 20 , 10 , 'static/img/default.jpg'),
+    (null , '人月神话' , '二哥' , 88.15 , 20 , 80 , 'static/img/default.jpg');
+```
+
+#### 编写 JavaBean
+
+```java
+public class Book {
+    private Integer id;
+    private String name;
+    private String author;
+    private BigDecimal price;
+    private Integer sales;
+    private Integer stock;
+    private String imgPath = "static/img/default.jpg";
+}
+```
+
+#### 编写 Dao 和测试
+
+1. BookDAO 接口
+
+```java
+package cn.parzulpan.dao;
+
+import cn.parzulpan.bean.Book;
+
+import java.sql.Connection;
+import java.util.List;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-10
+ * @Desc : 用于规范 Book 表的常用操作
+ */
+
+public interface BookDAO {
+
+    /**
+     * 增加一本书
+     * @param connection 数据库连接
+     * @param book Book Bean
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    public int addBook(Connection connection, Book book);
+
+    /**
+     * 根据 书的 id 删除一本书
+     * @param connection 数据库连接
+     * @param id 书的 id
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    public int deleteBookById(Connection connection, Integer id);
+
+    /**
+     * 更新一本书
+     * @param connection 数据库连接
+     * @param book Book Bean
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    public int updateBook(Connection connection, Book book);
+
+    /**
+     * 根据 书的 id 查询一本书
+     * @param connection 数据库连接
+     * @param id 书的 id
+     * @return Book Bean
+     */
+    public Book queryBookById(Connection connection, Integer id);
+
+    /**
+     * 查询所有书
+     * @param connection 数据库连接
+     * @return Book Bean List
+     */
+    public List<Book> queryBooks(Connection connection);
+}
+```
+
+2. BookDAOImpl 实现类
+
+```java
+package cn.parzulpan.dao;
+
+import cn.parzulpan.bean.Book;
+import cn.parzulpan.utils.JDBCUtils;
+
+import java.sql.Connection;
+import java.util.List;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-10
+ * @Desc :
+ */
+
+public class BookDAOImpl extends BaseDAO<Book> implements BookDAO {
+    /**
+     * 增加一本书
+     *
+     * @param connection 数据库连接
+     * @param book       Book Bean
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    @Override
+    public int addBook(Connection connection, Book book) {
+        String sql = "insert into t_book(`name`, `author`, `price`, `sales`, `stock`, `imgPath`) values (?, ?, ?, ?, ?, ?)";
+        return update(connection, sql,
+                book.getName(), book.getAuthor(), book.getPrice(), book.getSales(), book.getStock(), book.getImgPath());
+    }
+
+    /**
+     * 根据 书的 id 删除一本书
+     *
+     * @param connection 数据库连接
+     * @param id         书的 id
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    @Override
+    public int deleteBookById(Connection connection, Integer id) {
+        String sql = "delete from t_book where id = ?";
+        return update(connection, sql, id);
+    }
+
+    /**
+     * 更新一本书
+     *
+     * @param connection 数据库连接
+     * @param book       Book Bean
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    @Override
+    public int updateBook(Connection connection, Book book) {
+        String sql = "update t_book set `name` = ?, `author` = ?, `price` = ?, `sales` = ?, `stock` = ?, `imgPath` = ? where id = ?";
+        return update(connection, sql, book.getName(), book.getAuthor(), book.getPrice(), book.getSales(),
+                book.getStock(), book.getImgPath(), book.getId());
+    }
+
+    /**
+     * 根据 书的 id 查询一本书
+     *
+     * @param connection 数据库连接
+     * @param id         书的 id
+     * @return Book Bean
+     */
+    @Override
+    public Book queryBookById(Connection connection, Integer id) {
+        String sql = "select `id`, `name`, `author`, `price`, `sales`, `stock`, `imgPath` from t_book where id = ?";
+        return getBean(connection, sql, id);
+    }
+
+    /**
+     * 查询所有书
+     *
+     * @param connection 数据库连接
+     * @return Book Bean List
+     */
+    @Override
+    public List<Book> queryBooks(Connection connection) {
+        String sql = "select `id`, `name`, `author`, `price`, `sales`, `stock`, `imgPath` from t_book";
+        return getBeanList(connection, sql);
+    }
+}
+```
+
+3. BookDAOImplTest 单元测试
+
+```java
+package cn.parzulpan.test;
+
+import cn.parzulpan.bean.Book;
+import cn.parzulpan.dao.BookDAO;
+import cn.parzulpan.dao.BookDAOImpl;
+import cn.parzulpan.utils.JDBCUtils;
+import org.junit.Test;
+
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.util.List;
+
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-10
+ * @Desc :
+ */
+
+public class BookDAOImplTest {
+    private BookDAO bookDAO = new BookDAOImpl();
+
+    @Test
+    public void addBook() {
+        Connection connection = JDBCUtils.getConnection();
+        int addBook = bookDAO.addBook(connection,
+                new Book(null, "测试的书", "测试的作者",
+                        new BigDecimal(120), 100, 10, null));
+        System.out.println(addBook);
+        JDBCUtils.close(connection, null, null);
+    }
+
+    @Test
+    public void deleteBookById() {
+        Connection connection = JDBCUtils.getConnection();
+        int deleteBookById = bookDAO.deleteBookById(connection, 20);
+        System.out.println(deleteBookById);
+        JDBCUtils.close(connection, null, null);
+    }
+
+    @Test
+    public void updateBook() {
+        Connection connection = JDBCUtils.getConnection();
+        int updateBook = bookDAO.updateBook(connection,
+                new Book(2, "更新的书", "更新的作者",
+                        new BigDecimal(120), 100, 10, null));
+        System.out.println(updateBook);
+        JDBCUtils.close(connection, null, null);
+    }
+
+    @Test
+    public void queryBookById() {
+        Connection connection = JDBCUtils.getConnection();
+        Book queryBookById = bookDAO.queryBookById(connection, 2);
+        System.out.println(queryBookById);
+        JDBCUtils.close(connection, null, null);
+    }
+
+    @Test
+    public void queryBooks() {
+        Connection connection = JDBCUtils.getConnection();
+        List<Book> books = bookDAO.queryBooks(connection);
+        books.forEach(System.out::println);
+        JDBCUtils.close(connection, null, null);
+    }
+}
+```
+
+#### 编写 Service 和测试
+
+1. BookService 接口
+
+```java
+package cn.parzulpan.service;
+
+import cn.parzulpan.bean.Book;
+import cn.parzulpan.dao.BookDAOImpl;
+
+import java.sql.Connection;
+import java.util.List;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-10
+ * @Desc :
+ */
+
+public interface BookService {
+
+    /**
+     * 增加一本书
+     * @param book Book Bean
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    public int addBook(Book book);
+
+    /**
+     * 根据 书的 id 删除一本书
+     * @param id 书的 id
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    public int deleteBookById(Integer id);
+
+    /**
+     * 更新一本书
+     * @param book Book Bean
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    public int updateBook(Book book);
+
+    /**
+     * 根据 书的 id 查询一本书
+     * @param id 书的 id
+     * @return Book Bean
+     */
+    public Book queryBookById(Integer id);
+
+    /**
+     * 查询所有书
+     * @return Book Bean List
+     */
+    public List<Book> queryBooks();
+}
+```
+
+2. BookServiceImpl 实现类
+
+```java
+package cn.parzulpan.service;
+
+import cn.parzulpan.bean.Book;
+import cn.parzulpan.dao.BookDAO;
+import cn.parzulpan.dao.BookDAOImpl;
+import cn.parzulpan.utils.JDBCUtils;
+
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.util.List;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-10
+ * @Desc :
+ */
+
+public class BookServiceImpl implements BookService {
+    private BookDAO bookDAO = new BookDAOImpl();
+
+    /**
+     * 增加一本书
+     *
+     * @param book Book Bean
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    @Override
+    public int addBook(Book book) {
+        Connection connection = JDBCUtils.getConnection();
+        int i = bookDAO.addBook(connection, book);
+        JDBCUtils.close(connection, null, null);
+        return i;
+    }
+
+    /**
+     * 根据 书的 id 删除一本书
+     *
+     * @param id 书的 id
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    @Override
+    public int deleteBookById(Integer id) {
+        Connection connection = JDBCUtils.getConnection();
+        int deleteBookById = bookDAO.deleteBookById(connection, id);
+        JDBCUtils.close(connection, null, null);
+        return deleteBookById;
+    }
+
+    /**
+     * 更新一本书
+     *
+     * @param book Book Bean
+     * @return 返回 -1 表示操作失败；否则返回 sql 语句影响的行数
+     */
+    @Override
+    public int updateBook(Book book) {
+        Connection connection = JDBCUtils.getConnection();
+        int updateBook = bookDAO.updateBook(connection, book);
+        JDBCUtils.close(connection, null, null);
+        return updateBook;
+    }
+
+    /**
+     * 根据 书的 id 查询一本书
+     *
+     * @param id 书的 id
+     * @return Book Bean
+     */
+    @Override
+    public Book queryBookById(Integer id) {
+        Connection connection = JDBCUtils.getConnection();
+        Book queryBookById = bookDAO.queryBookById(connection, id);
+        JDBCUtils.close(connection, null, null);
+        return queryBookById;
+    }
+
+    /**
+     * 查询所有书
+     *
+     * @return Book Bean List
+     */
+    @Override
+    public List<Book> queryBooks() {
+        Connection connection = JDBCUtils.getConnection();
+        List<Book> books = bookDAO.queryBooks(connection);
+        JDBCUtils.close(connection, null, null);
+        return books;
+    }
+}
+```
+
+3. BookServiceImplTest 单元测试
+
+```java
+package cn.parzulpan.test;
+
+import cn.parzulpan.bean.Book;
+import cn.parzulpan.dao.BookDAO;
+import cn.parzulpan.dao.BookDAOImpl;
+import cn.parzulpan.utils.JDBCUtils;
+import org.junit.Test;
+
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.util.List;
+
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-10
+ * @Desc :
+ */
+
+public class BookDAOImplTest {
+    private BookDAO bookDAO = new BookDAOImpl();
+
+    @Test
+    public void addBook() {
+        Connection connection = JDBCUtils.getConnection();
+        int addBook = bookDAO.addBook(connection,
+                new Book(null, "测试的书", "测试的作者",
+                        new BigDecimal(120), 100, 10, null));
+        System.out.println(addBook);
+        JDBCUtils.close(connection, null, null);
+    }
+
+    @Test
+    public void deleteBookById() {
+        Connection connection = JDBCUtils.getConnection();
+        int deleteBookById = bookDAO.deleteBookById(connection, 20);
+        System.out.println(deleteBookById);
+        JDBCUtils.close(connection, null, null);
+    }
+
+    @Test
+    public void updateBook() {
+        Connection connection = JDBCUtils.getConnection();
+        int updateBook = bookDAO.updateBook(connection,
+                new Book(2, "更新的书", "更新的作者",
+                        new BigDecimal(120), 100, 10, null));
+        System.out.println(updateBook);
+        JDBCUtils.close(connection, null, null);
+    }
+
+    @Test
+    public void queryBookById() {
+        Connection connection = JDBCUtils.getConnection();
+        Book queryBookById = bookDAO.queryBookById(connection, 2);
+        System.out.println(queryBookById);
+        JDBCUtils.close(connection, null, null);
+    }
+
+    @Test
+    public void queryBooks() {
+        Connection connection = JDBCUtils.getConnection();
+        List<Book> books = bookDAO.queryBooks(connection);
+        books.forEach(System.out::println);
+        JDBCUtils.close(connection, null, null);
+    }
+}
+```
+
+
+#### 编写 Web 和测试
+
+##### 图书列表功能的实现
+
+**实现步骤**：
+
+* 在后台管理页面点击**图书管理**，所以需要修改图书管理请求地址 `<a href="bookServlet?action=list">图书管理</a>`
+* 在 BookServlet 程序中添加 list 方法：
+  * 查询全部图书
+  * 保存到 Request 域中
+  * **请求转发**到 book_manager.jsp 图书管理页面
+* book_manager.jsp 图书管理页面展示所有的图书信息
+  * 从 Request 域中获取全部图书信息
+  * 使用 `JSTL` 标签库遍历输出
+     * 导入 `taglibs-standard-impl-1.2.1.jar` 和 `taglibs-standard-spec-1.2.1.jar`
+     * 修改 book_manager.jsp 页面的数据遍历输出
+
+```java
+@WebServlet(name = "BookServlet", urlPatterns = ("/bookServlet"))
+public class BookServlet extends BaseServlet {
+    private BookService bookService  = new BookServiceImpl();
+
+    // 查询全部图书
+    protected void list(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        List<Book> books = bookService.queryBooks();
+        request.setAttribute("books", books);
+        // 请求转发，这里不能用请求重定向，想想为什么？
+        // 因为请求转发的特点是：浏览器地址栏不发生变化；一次请求；共享 Request 域中的数据
+        // 当用户提交完请求，浏览器会记录下最后一次请求的全部信息，当用户按下功能键 F5，就会发起浏览器记录的最后一次
+           请求。
+        // 所以必须是一次请求
+        request.getRequestDispatcher("/pages/manager/book_manager.jsp").forward(request, response);
+    }
+}
+```
+
+##### 添加图书功能的实现
+
+**实现步骤**：
+
+* 在图书管理页面点击添加按钮，跳转到 book_edit.jsp 添加图书页面
+* 在添加图书页面填写相关信息，点击提交按钮
+* 在 BookServlet 程序中添加 add 方法：
+  * 获取请求的参数，封装成为 Book 对象
+  * 调用 bookService.addBook(book) 保存图书
+  * **请求重定向**图书列表页面
+
+```java
+@WebServlet(name = "BookServlet", urlPatterns = ("/bookServlet"))
+public class BookServlet extends BaseServlet {
+    private BookService bookService  = new BookServiceImpl();
+
+    // 添加图书
+    protected void add(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // 中文编码问题
+        Book book = WebUtils.copyParamToBean(request.getParameterMap(), new Book());
+        bookService.addBook(book);
+        // 请求重定向，这里不能用请求转发，想想为什么？
+        // 因为请求重定向的特点是：浏览器地址栏会发生变化；两次请求；不共享 Request 域中的数据
+        response.sendRedirect("bookServlet?action=list");
+    }
+}
+```
+
+##### 删除图书功能的实现
+
+**实现步骤**：
+
+* 在图书管理页面点击删除按钮（`<td><a class="deleteClass" href="bookServlet?action=delete&id=${book.id}">删除</a></td>`）
+* 给删除添加确认提示操作
+* 在 BookServlet 程序中添加 delete 方法：
+  * 获取请求的参数 id
+  * 调用 bookService.deleteBookById(id) 删除图书
+  * **请求重定向**图书列表页面
+
+```java
+@WebServlet(name = "BookServlet", urlPatterns = ("/bookServlet"))
+public class BookServlet extends BaseServlet {
+    private BookService bookService  = new BookServiceImpl();
+
+    // 删除图书
+    protected void delete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        int id = WebUtils.parseInt(request.getParameter("id"));
+        bookService.deleteBookById(id);
+        response.sendRedirect("bookServlet?action=list");
+    }
+}
+```
+
+##### 修改图书功能的实现
+
+**实现步骤**：
+
+* 在图书管理页面点击修改按钮（`<td><a href="bookServlet?action=getBook&id=${book.id}">修改</a></td>`）
+* 在 BookServlet 程序中添加 getBook 方法，获取要修改的图书信息：
+  * 获取图书编号
+  * 调用 bookService.queryBookById(id) 获取图书信息
+  * 把信息保存到 Request 域中
+  * **请求转发**到 `book_edit.jsp` 图书编辑页面
+* 在 BookServlet 程序中添加 update 方法，保存修改图书的操作：
+  * 获取请求的参数，封装成为 Book 对象
+  * 调用 bookService.updateBook(book) 修改图书
+  * **请求重定向**图书列表页面
+* 解决 `book_edit.jsp` 图书编辑页面，即要实现添加，又要实现修改操作：
+  * 方案一：可以请求发起时，附带上当前要操作的值，并注入到隐藏域中 `<td><a href="bookServlet?action=getBook&id=${book.id}&method=add">修改</a></td>
+                                     					   <td><a href="pages/manager/book_edit.jsp&method=update">添加图书</a></td>`
+  * **方案二**：可以通过判断当前请求参数中是否包含 id 参数，如果有说明是修改操作，否则是添加操作 `<input type="hidden" name="action" value="${ empty param.id ? "add" : "update" }"/>`
+  * 方案三：可以通过判断 Request 域中是否包含要修改的图书信息对象，如果有说明是修改操作 `<input type="hidden" name="id" value="${ empty requestScope.book ? "add" : "update }"/>`
+
+```java
+@WebServlet(name = "BookServlet", urlPatterns = ("/bookServlet"))
+public class BookServlet extends BaseServlet {
+    private BookService bookService  = new BookServiceImpl();
+
+    // 查询图书
+    protected void getBook(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        int id = WebUtils.parseInt(request.getParameter("id"));
+        Book book = bookService.queryBookById(id);
+        request.setAttribute("book", book);
+        request.getRequestDispatcher("/pages/manager/book_edit.jsp").forward(request, response);
+    }
+
+    // 更新图书
+    protected void update(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        Book book = WebUtils.copyParamToBean(request.getParameterMap(), new Book());
+        bookService.updateBook(book);
+        response.sendRedirect("bookServlet?action=list");
+    }
+}
+```
+
+### 图书分页
+
+#### 分页模块的分析
+
+#### 分页模型 Page 的抽取
+
+#### 分页的初步实现
+
+#### 首页、上一页、下一页、末页实现
+
+#### 跳转到指定页实现
+
+#### 页码显示规范
+
+#### 增加回显页码
+
+#### 首页的跳转
+
+#### 分页条的抽取
+
+#### 首页价格搜索
 
 ## 阶段六 登录、登出、验证码、购物车
 

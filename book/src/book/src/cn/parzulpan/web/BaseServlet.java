@@ -17,6 +17,28 @@ import java.lang.reflect.Method;
 @WebServlet(name = "BaseServlet")
 public abstract class BaseServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+//        String action = request.getParameter("action");
+//
+//        // 使用反射优化，省去大量的判断代码
+//        try {
+//            // 获取 action 业务鉴别字符串，获得相应的业务员方法反射对象
+//            Method method = this.getClass().getDeclaredMethod(action, HttpServletRequest.class, HttpServletResponse.class);
+//            method.invoke(this, request, response);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+
+        System.out.println("doPost");
+        doAction(request, response);
+    }
+
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        System.out.println("doGet");
+        doAction(request, response);
+    }
+
+    // Post and Get Common
+    protected void doAction(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String action = request.getParameter("action");
 
         // 使用反射优化，省去大量的判断代码
@@ -27,9 +49,5 @@ public abstract class BaseServlet extends HttpServlet {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
     }
 }

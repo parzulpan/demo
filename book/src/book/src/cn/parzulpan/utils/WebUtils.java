@@ -14,10 +14,10 @@ public class WebUtils {
 
     /**
      * 一次性的把所有请求的参数注入到 JavaBean 中
-     * @param value
-     * @param bean
-     * @param <T>
-     * @return
+     * @param value request.getParameterMap()
+     * @param bean Java Bean
+     * @param <T> Class Type
+     * @return Java Bean
      */
     public static <T> T copyParamToBean(Map value, T bean) {
 
@@ -32,5 +32,20 @@ public class WebUtils {
         }
 
         return bean;
+    }
+
+    /**
+     * 将字符串转换为整型
+     * @param str 字符串
+     * @return 整型数
+     */
+    public static int parseInt(String str) {
+        int value = 0;
+        try {
+            return Integer.parseInt(str);
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+        }
+        return value;
     }
 }
