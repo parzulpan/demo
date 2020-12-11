@@ -16,6 +16,14 @@
 			$("a.deleteClass").click(function () {
 				return confirm("您确定要删除【" + $(this).parent().parent().find("td:first").text() + "】吗？")
 			});
+
+			$("#searchPageBtn").click(function () {
+				let pageNo = $("#pn_input").val();
+				// JavaScript 语言中提供了一个 location 地址栏对象
+				// 它有一个属性叫 href.它可以获取浏览器地址栏中的地址
+				// href 属性可读，可写
+				location.href = "bookServlet?action=page&pageNo=" + pageNo;
+			});
 		});
 	</script>
 
@@ -43,7 +51,8 @@
 			</tr>		
 
 <%--			使用 JSTL 标签库遍历输出--%>
-			<c:forEach items="${requestScope.books}" var="book">
+<%--			<c:forEach items="${requestScope.books}" var="book">--%>
+			<c:forEach items="${requestScope.page.items}" var="book">
 				<tr>
 					<td>${book.name}</td>
 					<td>${book.price}</td>
@@ -51,8 +60,9 @@
 					<td>${book.sales}</td>
 					<td>${book.stock}</td>
 <%--					<td><a href="pages/manager/book_edit.jsp">修改</a></td>--%>
-					<td><a href="bookServlet?action=getBook&id=${book.id}">修改</a></td>
-					<td><a class="deleteClass" href="bookServlet?action=delete&id=${book.id}">删除</a></td>
+<%--					<td><a href="bookServlet?action=getBook&id=${book.id}">修改</a></td>--%>
+					<td><a href="bookServlet?action=getBook&id=${book.id}&pageNo=${requestScope.page.pageNo}">修改</a></td>
+					<td><a class="deleteClass" href="bookServlet?action=delete&id=${book.id}&pageNo=${requestScope.page.pageNo}">删除</a></td>
 				</tr>
 			</c:forEach>
 			
@@ -66,6 +76,10 @@
 				<td><a href="pages/manager/book_edit.jsp">添加图书</a></td>
 			</tr>	
 		</table>
+
+		<%--静态包含分页条--%>
+		<%@include file="/pages/common/page_nav.jsp"%>
+
 	</div>
 
 	<%--静态包含每个页面的页脚--%>

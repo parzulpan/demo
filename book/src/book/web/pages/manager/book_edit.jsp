@@ -40,6 +40,7 @@
 <%--					解决 book_edit.jsp 页面，即要实现添加，又要实现修改操作--%>
 					<input type="hidden" name="action" value="${ empty param.id ? "add" : "update" }"/>
 					<input type="hidden" name="id" value="${ requestScope.book.id }"/>
+					<input type="hidden" name="pageNo" value="${param.pageNo}"/>
 
 				<table>
 					<tr>

@@ -37,14 +37,14 @@ public class WebUtils {
     /**
      * 将字符串转换为整型
      * @param str 字符串
+     * @param value 默认值
      * @return 整型数
      */
-    public static int parseInt(String str) {
-        int value = 0;
+    public static int parseInt(String str, int value) {
         try {
             return Integer.parseInt(str);
         } catch (NumberFormatException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
         }
         return value;
     }

@@ -982,23 +982,287 @@ public class BookServlet extends BaseServlet {
 
 #### 分页模块的分析
 
+由分页的视图分析出分页的对象模型 Page 类，它包括的属性有：
+
+* pageNo         当前页面     它是由客户端进行传递
+* pageSize       每页显示数量  它是由客户端进行传递和是由页面布局决定
+* pageTotalCount 总记录数     它是由 `select count(*) from 表名` 得到
+* pageTotal      总页码       它是由 总记录数 / 每页数量 得到，注意有余数的情况
+* item           当前页数据    它是由 `select * form 表名 limit begin, pageSize` 得到，`begin = (pageNo - 1) * pageSize`
+
+点击页码需要传递两个参数：pageNo，pageSize
+
+* BookServlet 程序添加 page 方法处理这个请求：
+  * 获取请求的参数 pageNo，pageSize
+  * 调用 BookService.page(pageNo, pageSize)，返回 page 对象
+  * 保存在 Request 域中
+  * 请求转发到 book_manager.jsp 页面
+* BookService 程序，处理分页业务
+  * `public Page page(pageNo, pageSize)`
+  * 得到总记录数、总页码、当前页数据
+* BookDAO 程序
+  * queryForPageTotalCount() 求总记录数 `select count(*) from 表名`
+  * queryForItems(begin, pageSize) 求当前页数据 `select * from 表名 limit begin, pageSize`
+
 #### 分页模型 Page 的抽取
+
+```java
+package cn.parzulpan.bean;
+
+import java.util.List;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-11
+ * @Desc :
+ */
+
+/**
+ * Page 是分页的模型对象
+ * @param <T> 是具体的模块的 JavaBean 类
+ */
+public class Page<T> {
+    public static final Integer PAGE_SIZE = 4;
+
+    private Integer pageNo; // 当前页码
+    private Integer pageTotal;  // 总页码
+    private Integer pageSize = PAGE_SIZE;   // 当前页显示数量
+    private Integer pageTotalCount; // 总记录数
+    private List<T> items;  // 当前页数据
+
+    public Page() {
+    }
+
+    public Page(Integer pageNo, Integer pageTotal, Integer pageSize, Integer pageTotalCount, List<T> items) {
+        this.pageNo = pageNo;
+        this.pageTotal = pageTotal;
+        this.pageSize = pageSize;
+        this.pageTotalCount = pageTotalCount;
+        this.items = items;
+    }
+
+    public static Integer getPageSize() {
+        return PAGE_SIZE;
+    }
+
+    public void setPageSize(Integer pageSize) {
+        this.pageSize = pageSize;
+    }
+
+    public Integer getPageTotalCount() {
+        return pageTotalCount;
+    }
+
+    public void setPageTotalCount(Integer pageTotalCount) {
+        this.pageTotalCount = pageTotalCount;
+    }
+
+    public List<T> getItems() {
+        return items;
+    }
+
+    public void setItems(List<T> items) {
+        this.items = items;
+    }
+
+    public Integer getPageNo() {
+        return pageNo;
+    }
+
+    public void setPageNo(Integer pageNo) {
+        /* 数据边界的有效检查 */
+        if (pageNo < 1) {
+            pageNo = 1;
+        }
+        if (pageNo > pageTotal) {
+            pageNo = pageTotal;
+        }
+        this.pageNo = pageNo;
+    }
+
+    public Integer getPageTotal() {
+        return pageTotal;
+    }
+
+    public void setPageTotal(Integer pageTotal) {
+        this.pageTotal = pageTotal;
+    }
+
+    @Override
+    public String toString() {
+        return "Page{" +
+                "pageNo=" + pageNo +
+                ", pageTotal=" + pageTotal +
+                ", pageSize=" + pageSize +
+                ", pageTotalCount=" + pageTotalCount +
+                ", items=" + items +
+                '}';
+    }
+}
+```
 
 #### 分页的初步实现
 
-#### 首页、上一页、下一页、末页实现
+BookDAO：
 
-#### 跳转到指定页实现
+```java
+    @Override
+    public Integer queryForPageTotalCount(Connection connection) {
+        String sql = "select count(*) from t_book";
+        Number count = (Number) getValue(connection, sql);
+        return count.intValue();
+    }
 
-#### 页码显示规范
+    @Override
+    public List<Book> queryForPageItems(Connection connection, int begin, int pageSize) {
+        String sql = "select `id`, `name`, `author`, `price`, `sales`, `stock`, `imgPath` from t_book limit ?, ?";
+        return getBeanList(connection, sql, begin, pageSize);
+    }
+```
 
-#### 增加回显页码
+BookService：
+
+```java
+ @Override
+    public Page<Book> page(int pageNo, int pageSize) {
+        Page<Book> page = new Page<>();
+        Connection connection = JDBCUtils.getConnection();
+
+        page.setPageNo(pageNo); // 设置当前页码
+        page.setPageSize(pageSize); // 设置每页显示的数量
+        Integer pageTotalCount = bookDAO.queryForPageTotalCount(connection);
+        page.setPageTotalCount(pageTotalCount); // 设置总记录数
+        int pageTotal = pageTotalCount / pageSize;
+        if (pageTotalCount % pageSize > 0) {
+            pageTotal += 1;
+        }
+        page.setPageTotal(pageTotal);   // 设置总页码
+        int begin = (page.getPageNo() - 1) * pageSize;  // 求当前页数据的开始索引
+        List<Book> items = bookDAO.queryForPageItems(connection, begin,pageSize);   // 求当前页数据
+        page.setItems(items);
+
+        JDBCUtils.close(connection, null, null);
+
+        return page;
+```
+
+BookServlet：
+
+```java
+    // 处理分页
+    protected void page(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        int pageNo = WebUtils.parseInt(request.getParameter("pageNo"), 1);
+        int pageSize = WebUtils.parseInt(request.getParameter("pageSize"), Page.PAGE_SIZE);
+        Page<Book> page = bookService.page(pageNo, pageSize);
+        request.setAttribute("page", page);
+        request.getRequestDispatcher("/pages/manager/book_manager.jsp").forward(request, response);
+    }
+```
+
+#### 跳转增加回显页码
+
+```jsp
+
+<%--		添加分页--%>
+		<div id="page_nav">
+<%--			<a href="#">首页</a>--%>
+<%--			<a href="#">上一页</a>--%>
+			<c:if test="${requestScope.page.pageNo > 1}">
+				<a href="bookServlet?action=page&pageNo=1">首页</a>
+				<a href="bookServlet?action=page&pageNo=${requestScope.page.pageNo-1}">上一页</a>
+			</c:if>
+
+<%--			<a href="#">3</a>--%>
+<%--			【${requestScope.page.pageNo}】--%>
+<%--			<a href="#">5</a>--%>
+			<%--页码输出的开始--%>
+			<c:choose>
+				<%--情况 1：如果总页码小于等于 5 的情况，页码的范围是：1-总页码--%>
+				<c:when test="${ requestScope.page.pageTotal <= 5 }">
+					<c:set var="begin" value="1"/>
+					<c:set var="end" value="${requestScope.page.pageTotal}"/>
+				</c:when>
+				<%--情况 2：总页码大于 5 的情况--%>
+				<c:when test="${requestScope.page.pageTotal > 5}">
+					<c:choose>
+						<%--小情况 1：当前页码为前面 3 个：1，2，3 的情况，页码范围是：1-5.--%>
+						<c:when test="${requestScope.page.pageNo <= 3}">
+							<c:set var="begin" value="1"/>
+							<c:set var="end" value="5"/>
+						</c:when>
+						<%--小情况 2：当前页码为最后 3 个，8，9，10，页码范围是：总页码减 4 - 总页码--%>
+						<c:when test="${requestScope.page.pageNo > requestScope.page.pageTotal-3}">
+							<c:set var="begin" value="${requestScope.page.pageTotal-4}"/>
+							<c:set var="end" value="${requestScope.page.pageTotal}"/>
+						</c:when>
+						<%--小情况 3：4，5，6，7，页码范围是：当前页码减 2 - 当前页码加 2--%>
+						<c:otherwise>
+							<c:set var="begin" value="${requestScope.page.pageNo-2}"/>
+							<c:set var="end" value="${requestScope.page.pageNo+2}"/>
+						</c:otherwise>
+					</c:choose>
+				</c:when>
+			</c:choose>
+			<c:forEach begin="${begin}" end="${end}" var="i">
+				<c:if test="${i == requestScope.page.pageNo}">
+					【${i}】
+				</c:if>
+				<c:if test="${i != requestScope.page.pageNo}">
+					<a href="bookServlet?action=page&pageNo=${i}">${i}</a>
+				</c:if>
+			</c:forEach>
+			<%--页码输出的结束--%>
+
+
+<%--			<a href="#">下一页</a>--%>
+<%--			<a href="#">末页</a>--%>
+			<c:if test="${requestScope.page.pageNo < requestScope.page.pageTotal}">
+				<a href="bookServlet?action=page&pageNo=${requestScope.page.pageNo+1}">下一页</a>
+				<a href="bookServlet?action=page&pageNo=${requestScope.page.pageTotal}">末页</a>
+			</c:if>
+
+<%--			共${ requestScope.page.pageTotal }页，${requestScope.page.pageTotalCount} 条记录--%>
+<%--			跳转到第 <input value="4" name="pn" id="pn_input"/> 页--%>
+<%--			<input type="button" value="确定">--%>
+			共${ requestScope.page.pageTotal }页，${requestScope.page.pageTotalCount} 条记录
+			，跳转到第 <input value="${param.pageNo}" name="pn" id="pn_input"/> 页
+			<input id="searchPageBtn" type="button" value="确定">
+		</div>
+	</div>
+
+```
 
 #### 首页的跳转
 
+* web 目录下的 index.jsp，请求转发到 ClientBookServlet 程序
+* ClientBookServlet 程序中处理分页，请求转发到 /pages/client/index.jsp
+
 #### 分页条的抽取
 
+因为除了分页条的请求地址不同，其他全部相同。所以可以抽取，然后包含。
+
+**步骤**：
+
+* 抽取分页条中请求地址为 url 变量
+  * 在 page 对象中添加 url 属性
+  * 在 Servlet 程序的 page 分页方法中分别设置 url 的分页请求地址
+  * 修改分页条中请求地址为 url 变量输出,并抽取一个单独的 jsp 页面
+
 #### 首页价格搜索
+
+* 点击价格查询按钮，传递两个参数：pageNo，pageSize, min, max
+
+* ClientBookServlet 程序添加 pageByPrice 方法处理这个请求：
+  * 获取请求的参数 pageNo，pageSize, min, max
+  * 调用 BookService.pageByPrice(pageNo, pageSize, min, max)，返回 page 对象
+  * 保存在 Request 域中
+  * 请求转发到 /pages/client/index.jsp 页面
+* BookService 程序，处理价格区间分页业务
+  * `public Page page(pageNo, pageSizee, min, max)`
+  * 得到总记录数、总页码、当前页数据
+* BookDAO 程序
+  * queryForPageTotalCount(min, max) 求总记录数 `select count(*) from 表名 where price between min and max`
+  * queryForItems(begin, pageSize, min, max) 求当前页数据 `select * from 表名 where price between min and max order by price limit begin, pageSize`
 
 ## 阶段六 登录、登出、验证码、购物车
 

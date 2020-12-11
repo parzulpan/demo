@@ -51,4 +51,36 @@ public interface BookDAO {
      * @return Book Bean List
      */
     public List<Book> queryBooks(Connection connection);
+
+    /**
+     * 求总记录数
+     * @param connection 数据库连接
+     * @return 总记录数
+     */
+    public Integer queryForPageTotalCount(Connection connection);
+
+    /**
+     * 求当前页数据
+     * @param connection 数据库连接
+     * @param begin 起始
+     * @param pageSize 当前页显示数量
+     * @return 当前页数据
+     */
+    public List<Book> queryForPageItems(Connection connection, int begin, int pageSize);
+
+    /**
+     * 求价格区间的总记录数
+     * @param connection 数据库连接
+     * @return 总记录数
+     */
+    public Integer queryForPageTotalCount(Connection connection, int min, int max);
+
+    /**
+     * 求价格区间的当前页数据
+     * @param connection 数据库连接
+     * @param begin 起始
+     * @param pageSize 当前页显示数量
+     * @return 当前页数据
+     */
+    public List<Book> queryForPageItems(Connection connection, int begin, int pageSize, int min, int max);
 }
