@@ -16,10 +16,27 @@
 			<img class="logo_img" alt="" src="static/img/logo.png" width="70" height="70">
 			<span class="wel_word">网上书城</span>
 			<div>
-				<a href="pages/user/login.jsp">登录</a> |
-				<a href="pages/user/regist.jsp">注册</a> &nbsp;&nbsp;
-				<a href="pages/cart/cart.jsp">购物车</a>
-				<a href="pages/manager/manager.jsp">后台管理</a>
+<%--				<a href="pages/user/login.jsp">登录</a> |--%>
+<%--				<a href="pages/user/regist.jsp">注册</a> &nbsp;&nbsp;--%>
+<%--				<a href="pages/cart/cart.jsp">购物车</a>--%>
+<%--				<a href="pages/manager/manager.jsp">后台管理</a>--%>
+
+<%--				使用 Session 显示用户名--%>
+<%--				如果用户还没有登录--%>
+				<c:if test="${empty sessionScope.user}">
+					<a href="pages/user/login.jsp">登录</a> |
+					<a href="pages/user/regist.jsp">注册</a> &nbsp;&nbsp;
+					<a href="pages/cart/cart.jsp">购物车</a>
+					<a href="pages/manager/manager.jsp">后台管理</a>
+				</c:if>
+<%--				如果用户已经登录--%>
+				<c:if test="${not empty sessionScope.user}">
+					<span>欢迎<span class="um_span"> ${sessionScope.user.username} </span>光临购书城</span>
+					<a href="pages/order/order.jsp">我的订单</a>
+					<a href="userServlet?action=logout">注销</a>&nbsp;&nbsp;
+					<a href="pages/cart/cart.jsp">购物车</a>
+					<a href="pages/manager/manager.jsp">后台管理</a>
+				</c:if>
 			</div>
 	</div>
 	<div id="main">
@@ -77,8 +94,6 @@
 		<%--静态包含分页条--%>
 		<%@include file="/pages/common/page_nav.jsp"%>
 
-
-	
 	</div>
 
 	<%--静态包含每个页面的页脚--%>

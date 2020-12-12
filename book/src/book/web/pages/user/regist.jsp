@@ -66,6 +66,13 @@
 
 				// 验证成功，去掉提示信息
 				$("span.errorMsg").text("");
+			});
+
+			$("#code_img").click(function() {
+				// 在事件响应的 function 函数中有一个 this 对象。这个 this 对象，是当前正在响应事件的 dom 对象
+				// src 属性表示验证码 img 标签的 图片路径。它可读，可写
+				// alert(this.src);
+				this.src = "${basePath}kaptcha.jpg?d=" + new Date();
 			})
 		})
 	</script>
@@ -130,13 +137,13 @@
 									<br />
 									<br />
 									<label>验证码：</label>
-									<label for="code"></label><input class="itxt" type="text" style="width: 150px;"
+									<label for="code"></label><input class="itxt" type="text" style="width: 90px; height: 20px; "
 																	 name="code"  id="code"/>
-									<img alt="" src="static/img/code.bmp" style="float: right; margin-right: 40px">
+									<img id="code_img" alt="" src="kaptcha.jpg" style="float: right; margin-right: 40px; width: 120px; height: 40px; ">
 									<br />
 									<br />
 									<input type="submit" value="注册" id="sub_btn" />
-									
+
 								</form>
 							</div>
 							

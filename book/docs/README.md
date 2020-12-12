@@ -1266,4 +1266,86 @@ BookServlet：
 
 ## 阶段六 登录、登出、验证码、购物车
 
+### 登录-显示用户名
+
+* UserServlet 程序中保存用户登录的信息
+* 修改 login_success_menu.jsp 页面
+* 修改 index.jsp 页面的菜单
+
+### 登出-注销用户
+
+* 销毁 Session 中用户登录的信息（或者销毁 Session）
+* 重定向到首页（或登录页面）。
+
+### 表单重复提交解决-验证码
+
+表单重复提交有三种常见的情况：
+* 一：提交完表单。服务器使用请求转来进行页面跳转。这个时候，用户按下功能键 F5，就会发起最后一次的请求。造成表单重复提交问题。**解决方法：使用重定向来进行跳转**
+* 二：用户正常提交服务器，但是由于网络延迟等原因，迟迟未收到服务器的响应，这个时候，用户以为提交失败，就会着急，然后多点了几次提交操作，也会造成表单重复提交。
+* 三：用户正常提交服务器。服务器也没有延迟，但是提交完成后，用户回退浏览器。重新提交。也会造成表单重复提交。
+
+**验证码解决表单重复提交的底层原理**：
+
+* 当用户第一次访问表单时，就要给表单生成一个随机的验证码字符串
+* 把这个验证码字符串保存在 Session 域中
+* 并把这个验证码字符串以图片等形式显示在表单项中
+* 点击 "提交" 按钮，Servlet 程序就要获取 Session 域中的验证码，并删除 Session 域中的验证码
+* Servlet 程序再获取表单项信息
+* 比较这个验证码和表单中的验证码是否相等
+  * 相等，则允许操作
+  * 不相等，则阻止操作
+
+### kaptcha 的使用
+
+谷歌验证码 kaptcha 使用步骤：
+* 导入谷歌验证码的 jar 包 `kaptcha-2.3.2.jar`
+* 在 web.xml 中去配置用于生成验证码的 Servlet 程序
+
+    ```xml
+        <servlet>
+            <servlet-name>KaptchaServlet</servlet-name>
+            <servlet-class>com.google.code.kaptcha.servlet.KaptchaServlet</servlet-class>
+        </servlet>
+        <servlet-mapping>
+            <servlet-name>KaptchaServlet</servlet-name>
+            <url-pattern>/kaptcha.jpg</url-pattern>
+        </servlet-mapping>
+    ```
+
+* 在表单中使用 img 标签去显示验证码图片并使用它
+
+    ```jsp
+    
+    <label>验证码：</label>
+    <label for="code"></label><input class="itxt" type="text" style="width: 150px;" name="code"  id="code"/>
+    <img alt="" src="/kaptcha.jpg" style="float: right; margin-right: 40px">
+    <br />
+    <br />
+    <input type="submit" value="注册" id="sub_btn" />
+    
+    ```
+
+* 在服务器获取谷歌生成的验证码和客户端发送过来的验证码比较使用
+
+    ```java
+    // 获取 Session 中的验证码
+    String token = (String)request.getSession().getAttribute(KAPTCHA_SESSION_KEY);
+    // 删除 Session 中的验证码
+    request.getSession().removeAttribute(KAPTCHA_SESSION_KEY);
+    ```
+
+* 切换验证码
+
+    ```javascript
+    // 给验证码的图片，绑定单击事件
+    $("#code_img").click(function () {
+      // 在事件响应的 function 函数中有一个 this 对象。这个 this 对象，是当前正在响应事件的 dom 对象
+      // src 属性表示验证码 img 标签的 图片路径。它可读，可写
+      // alert(this.src);
+      this.src = "${basePath}kaptcha.jpg?d=" + new Date();
+    });
+    ```
+
+
+
 ## 阶段七 结账及添加事务

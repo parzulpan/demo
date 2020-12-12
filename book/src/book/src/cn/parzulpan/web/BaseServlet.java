@@ -27,7 +27,6 @@ public abstract class BaseServlet extends HttpServlet {
 //        } catch (Exception e) {
 //            e.printStackTrace();
 //        }
-
         System.out.println("doPost");
         doAction(request, response);
     }
@@ -39,6 +38,10 @@ public abstract class BaseServlet extends HttpServlet {
 
     // Post and Get Common
     protected void doAction(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // 解决中文乱码
+        request.setCharacterEncoding("UTF-8");
+        response.setContentType("text/html; charset=UTF-8");
+
         String action = request.getParameter("action");
 
         // 使用反射优化，省去大量的判断代码

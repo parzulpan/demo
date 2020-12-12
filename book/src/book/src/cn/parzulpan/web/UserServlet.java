@@ -14,6 +14,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import static com.google.code.kaptcha.Constants.KAPTCHA_SESSION_KEY;
+
 /**
  * @Author : parzulpan
  * @Time : 2020-12-10
@@ -73,8 +75,16 @@ public class UserServlet extends BaseServlet {  // 继承 BaseServlet 程序
             request.getRequestDispatcher("/pages/user/login.jsp").forward(request, response);
         } else {
             System.out.println("登录成功！");
+            // 保存用户登录的信息到 Session 域中
+            request.getSession().setAttribute("user", userB);
             request.getRequestDispatcher("/pages/user/login_success.jsp").forward(request, response);
         }
+    }
+
+    // 处理登出
+    protected void logout(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        request.getSession().invalidate();
+        response.sendRedirect(request.getContextPath());
     }
 
     /**
@@ -98,8 +108,14 @@ public class UserServlet extends BaseServlet {  // 继承 BaseServlet 程序
         String email = user.getEmail();
         String code = request.getParameterMap().get("code")[0];
 
+        // 获取 Session 中的验证码
+        String token = (String)request.getSession().getAttribute(KAPTCHA_SESSION_KEY);
+        // 删除 Session 中的验证码
+        request.getSession().removeAttribute(KAPTCHA_SESSION_KEY);
+
         // 由于目前还没有使用服务器生成验证码，写死要求验证码为 bnbnp
-        if ("bnbnp".equalsIgnoreCase(code)) {
+        // 使用谷歌生成的验证码
+        if (token != null && token.equalsIgnoreCase(code)) {
             // 检查用户名是否可用
             if (userService.checkUsername(username)) {
                 // 打印信息
