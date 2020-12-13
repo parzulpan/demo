@@ -11,7 +11,7 @@ project demo repository.
   * [Docs](jdbc/README.md)
   * [Src](jdbc/src/code)
 * **JavaBasis**
-  * [Docs](jdbc/README.md)
-  * [Src](jdbc/src/code)
+  * [Docs](JavaBasis/README.md)
+  * [Src](JavaBasis/src/code)
 
 ## 说明
