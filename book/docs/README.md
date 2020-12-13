@@ -1264,7 +1264,7 @@ BookServlet：
   * queryForPageTotalCount(min, max) 求总记录数 `select count(*) from 表名 where price between min and max`
   * queryForItems(begin, pageSize, min, max) 求当前页数据 `select * from 表名 where price between min and max order by price limit begin, pageSize`
 
-## 阶段六 登录、登出、验证码、购物车
+## 阶段六 登录、登出、验证码
 
 ### 登录-显示用户名
 
@@ -1345,6 +1345,8 @@ BookServlet：
       this.src = "${basePath}kaptcha.jpg?d=" + new Date();
     });
     ```
+
+## 阶段七 购物车和订单管理
 
 ### 购物车
 
@@ -1719,4 +1721,6 @@ OderItemDAO 程序：
 
 #### 订单模块实现
 
-## 阶段七 结账及添加事务
+## 阶段八 使用 Filter
+
+## 阶段九 使用 AJAX
