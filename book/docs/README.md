@@ -1721,6 +1721,196 @@ OderItemDAO 程序：
 
 #### 订单模块实现
 
-## 阶段八 使用 Filter
+## 阶段八 过滤器拦截和管理事务
+
+### 使用 Filter 拦截/pages/manager/所有内容，实现权限检查
+
+```java
+package cn.parzulpan.web;
+
+import javax.servlet.*;
+import javax.servlet.annotation.WebFilter;
+import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-13
+ * @Desc : 使用 Filter 过滤器拦截/pages/manager/所有内容，实现权限检查
+ */
+
+@WebFilter(filterName = "ManagerFilter", urlPatterns = {"/pages/manager/*", "/bookServlet"})
+public class ManagerFilter implements Filter {
+    public void destroy() {
+    }
+
+    public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain) throws ServletException, IOException {
+        HttpServletRequest httpServletRequest = (HttpServletRequest) req;
+        Object user = httpServletRequest.getSession().getAttribute("user");
+        if (user == null) {
+            httpServletRequest.getRequestDispatcher("/pages/user/login.jsp").forward(req, resp);
+        } else {
+            chain.doFilter(req, resp);
+        }
+
+    }
+
+    public void init(FilterConfig config) throws ServletException {
+
+    }
+}
+
+```
+
+### 使用 Filter 和 ThreadLocal 组合管理事务
+
+#### ThreadLocal 的使用
+
+ThreadLocal 可以解决多线程的数据安全问题。
+
+ThreadLocal 可以给当前线程关联一个数据，这个数据可以是普通变量，可以是对象，也可以是数组和集合等。
+
+**ThreadLocal 特点**：
+
+* ThreadLocal 可以为当前线程关联一个数据，它可以像 Map 一样存取数据，**key 为当前线程**
+* 每一个 ThreadLocal 对象，只能为当前线程关联一个数据，如果要为当前线程关联多个数据，就需要使用 多个 ThreadLocal 实例，所以是线程安全的
+* 每个 ThreadLocal 对象实例定义的时候，一般都是 Static 类型
+* ThreadLocal 中保存数据，在线程销毁后，会由 JVM 自动释放
+
+#### 组合管理事务
+
+要确保所有操作要么都成功，要么都失败，就必须使用数据库事务。
+
+而要确保所有操作都在一个事务内，就必须确保所有操作都使用同一个 Connection 连接对象。
+
+可以用 ThreadLocal 对象来确保所有的操作都使用同一个 Connection 连接对象，但是这个操作的前提条件是所有操作必须在同一个线程中完成，这显然是满足的。
+
+```java
+
+public void JDBC() {
+    Connection connection = JDBCUtils.getConnection();  // ThreadLocal<Connection> conns = new ThreadLocal<>(); 
+                                                        // conns.set(conn);  保存从数据库连接池中获取的连接的连接对象
+    try {
+        // 1. 获取数据库连接
+        // 1.1 手写的连接（JDBCUtils）：加载配置信息 -> 读取配置信息 -> 加载驱动 -> 获取连接
+        // 1.2 数据库连接池：C3P0、DBCP、Druid
+
+        // 取消事务自动提交
+        connection.setAutoCommit(false);    // connection = conns.get(); 得到前面的保存的连接对象
+ 
+        // 2. 对数据表进行一系列 CRUD 操作    // connection = conns.get(); 得到前面的保存的连接对象
+        // 2.1 使用 PreparedStatement 实现通用的增删改、查询操作
+        // 2.2 考虑事务实现通用的增删改、查询操作
+        // 2.3 使用 commons-dbutils
+
+        // 提交数据
+        connection.commit();    // connection = conns.get(); 得到前面的保存的连接对象
+    } catch (Exception e) {
+        e.printStackTrace();
+
+        try {
+            // 回滚数据
+            connection.rollback();    // connection = conns.get(); 得到前面的保存的连接对象
+        } catch (SQLException e1) {
+            e1.printStackTrace();
+        }
+    } finally {
+        // 恢复事务自动提交
+        connection.setAutoCommit(true);    // connection = conns.get(); 得到前面的保存的连接对象
+
+        // 3. 关闭数据库连接    // connection = conns.get(); 得到前面的保存的连接对象
+        // 3.1 手写的关闭（JDBCUtils）
+        // 3.2 使用 commons-dbutils
+    }
+}
+
+```
+
+#### 使用 Filter 过滤器统一给所有的 Service 方法都加上 try-catch
+
+因为 doFilter() 方法会调用下一个 filter 过滤器，然后调用目标资源。等于说间接调用了 Servlet 程序中的业务方法，所以可以在这里 进行 try-catch 来实现事务的管理。
+
+
+```java
+package cn.parzulpan.web;
+
+import cn.parzulpan.utils.JDBCUtils;
+
+import javax.servlet.*;
+import java.io.IOException;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-13
+ * @Desc : 事务过滤器
+ */
+
+public class TransactionFilter implements Filter {
+    public void destroy() {
+    }
+
+    public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain) throws ServletException, IOException {
+
+        try {
+            chain.doFilter(req, resp);
+            JDBCUtils.commitAndClose();
+        } catch (IOException e) {
+            e.printStackTrace();
+            JDBCUtils.rollbackAndClose();
+        }
+    }
+
+    public void init(FilterConfig config) throws ServletException {
+
+    }
+
+}
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+         version="4.0">
+
+    <filter>
+        <filter-name>TransactionFilter</filter-name>
+        <filter-class>cn.parzulpan.web.TransactionFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>TransactionFilter</filter-name>
+        <!-- /* 表示当前工程下所有请求 -->
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+</web-app>
+```
+
+**最后一定要记得把 BaseServlet 中的异常往外抛给事务过滤器**。
+
+为了提升用户交互，可以将所有异常都统一交给 Tomcat，让 Tomcat 展示友好的错误信息页面。
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+         version="4.0">
+
+     <<!--error-page 标签配置，服务器出错之后，自动跳转的页面-->
+     <error-page>
+         <!--error-code 是错误类型-->
+         <error-code>500</error-code>
+         <!--location 标签表示。要跳转去的页面路径-->
+         <location>/pages/error/error500.jsp</location>
+     </error-page>
+     <error-page>
+         <!--error-code 是错误类型-->
+         <error-code>404</error-code>
+         <!--location 标签表示。要跳转去的页面路径-->
+         <location>/pages/error/error404.jsp</location>
+     </error-page>
+</web-app>
+```
 
 ## 阶段九 使用 AJAX

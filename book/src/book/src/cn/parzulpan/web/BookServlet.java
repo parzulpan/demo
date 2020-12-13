@@ -45,6 +45,10 @@ public class BookServlet extends BaseServlet {
     protected void delete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         int id = WebUtils.parseInt(request.getParameter("id"), 0);
         bookService.deleteBookById(id);
+
+        // 测试事务
+        System.out.println(100/0);
+
 //        response.sendRedirect("bookServlet?action=list");
         response.sendRedirect("bookServlet?action=page&pageNo=" + request.getParameter("pageNo"));
     }

@@ -27,7 +27,7 @@ public class UserServiceImpl implements UserService {
         Connection connection = JDBCUtils.getConnection();
         int saveUser = userDAO.saveUser(connection, new User(null, user.getUsername(),
                 user.getPassword(), user.getEmail()));
-        JDBCUtils.close(connection, null, null);
+//        JDBCUtils.close(connection, null, null);
         return saveUser;
     }
 
@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
     public User login(User user) {
         Connection connection = JDBCUtils.getConnection();
         User user1 = userDAO.queryUserByUsernameAndPassword(connection, user.getUsername(), user.getPassword());
-        JDBCUtils.close(connection, null, null);
+//        JDBCUtils.close(connection, null, null);
         return user1;
     }
 
@@ -55,7 +55,7 @@ public class UserServiceImpl implements UserService {
     public boolean checkUsername(String username) {
         Connection connection = JDBCUtils.getConnection();
         User user = userDAO.queryUserByUsername(connection, username);
-        JDBCUtils.close(connection, null, null);
+//        JDBCUtils.close(connection, null, null);
         return user != null;
     }
 }

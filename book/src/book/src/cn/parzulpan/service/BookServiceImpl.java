@@ -23,7 +23,7 @@ public class BookServiceImpl implements BookService {
     public int addBook(Book book) {
         Connection connection = JDBCUtils.getConnection();
         int i = bookDAO.addBook(connection, book);
-        JDBCUtils.close(connection, null, null);
+//        JDBCUtils.close(connection, null, null);
         return i;
     }
 
@@ -31,7 +31,7 @@ public class BookServiceImpl implements BookService {
     public int deleteBookById(Integer id) {
         Connection connection = JDBCUtils.getConnection();
         int deleteBookById = bookDAO.deleteBookById(connection, id);
-        JDBCUtils.close(connection, null, null);
+//        JDBCUtils.close(connection, null, null);
         return deleteBookById;
     }
 
@@ -39,7 +39,7 @@ public class BookServiceImpl implements BookService {
     public int updateBook(Book book) {
         Connection connection = JDBCUtils.getConnection();
         int updateBook = bookDAO.updateBook(connection, book);
-        JDBCUtils.close(connection, null, null);
+//        JDBCUtils.close(connection, null, null);
         return updateBook;
     }
 
@@ -47,7 +47,7 @@ public class BookServiceImpl implements BookService {
     public Book queryBookById(Integer id) {
         Connection connection = JDBCUtils.getConnection();
         Book queryBookById = bookDAO.queryBookById(connection, id);
-        JDBCUtils.close(connection, null, null);
+//        JDBCUtils.close(connection, null, null);
         return queryBookById;
     }
 
@@ -55,7 +55,7 @@ public class BookServiceImpl implements BookService {
     public List<Book> queryBooks() {
         Connection connection = JDBCUtils.getConnection();
         List<Book> books = bookDAO.queryBooks(connection);
-        JDBCUtils.close(connection, null, null);
+//        JDBCUtils.close(connection, null, null);
         return books;
     }
 
@@ -78,7 +78,7 @@ public class BookServiceImpl implements BookService {
         List<Book> items = bookDAO.queryForPageItems(connection, begin,pageSize);   // 求当前页数据
         page.setItems(items);
 
-        JDBCUtils.close(connection, null, null);
+//        JDBCUtils.close(connection, null, null);
 
         return page;
     }
@@ -102,7 +102,7 @@ public class BookServiceImpl implements BookService {
         List<Book> items = bookDAO.queryForPageItems(connection, begin, pageSize, min, max);   // 求当前页数据
         page.setItems(items);
 
-        JDBCUtils.close(connection, null, null);
+//        JDBCUtils.close(connection, null, null);
 
         return page;
     }
