@@ -71,4 +71,19 @@
     共${ requestScope.page.pageTotal }页，${requestScope.page.pageTotalCount} 条记录
     ，跳转到第 <input value="${param.pageNo}" name="pn" id="pn_input"/> 页
     <input id="searchPageBtn" type="button" value="确定">
+
+    <script type="text/javascript">
+        // 跳转到指定页码
+        $(function () {
+
+            $("#searchPageBtn").click(function () {
+                let pageNo = $("#pn_input").val();
+                // JavaScript 语言中提供了一个 location 地址栏对象
+                // 它有一个属性叫 href.它可以获取浏览器地址栏中的地址
+                // href 属性可读，可写
+                location.href = "${pageScope.basePath}${requestScope.page.url}&pageNo=" + pageNo;
+            });
+        });
+    </script>
+
 </div>

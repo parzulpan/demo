@@ -1346,6 +1346,377 @@ BookServlet：
     });
     ```
 
+### 购物车
 
+#### 购物车模块分析
+
+实现购物车功能的技术有：
+
+* Session 版本，即把购物车信息保存到 Session 域中，**这次使用这个版本**
+* 数据库版本，即把购物车信息保存到数据库中
+* Redis + 数据库 + Cookie 版本，即使用 Cookie + Redis 缓存，数据库保存
+
+由购物车的界面分析出购物车的模型：
+
+* Cart 购物车对象
+  * totalCount 总商品数量
+  * totalPrice 总商品金额
+  * items      购物车商品
+* CartItem 购物车商品项
+  * id         商品编号
+  * name       商品名称
+  * count      商品数量
+  * price      商品单价
+  * totalPrice 商品总价
+  
+购物车功能：
+
+* **加入购物车**  `CartServlet 程序中 addItem()`  `Cart对象 addItem(CartItem)`
+* **删除购物车中商品**  `CartServlet 程序中 deleteItem()`  `Cart对象 deleteItem(id)`
+* **清空购物车**       `CartServlet 程序中 clear()`  `Cart对象 clear()`
+* **修改购物车中商品**  `CartServlet 程序中 updateCount()`  `Cart对象 updateCount(id, count)`
+
+#### 购物车模块实现
+
+```java
+package cn.parzulpan.bean;
+
+import java.math.BigDecimal;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-13
+ * @Desc : 购物车的商品项
+ */
+
+public class CartItem {
+    private Integer id; // 商品编号
+    private String name;    // 商品名称
+    private Integer count;  // 商品数量
+    private BigDecimal price;   // 商品单价
+    private BigDecimal totalPrice;  // 商品总价
+
+    public CartItem() {
+    }
+
+    public CartItem(Integer id, String name, Integer count, BigDecimal price, BigDecimal totalPrice) {
+        this.id = id;
+        this.name = name;
+        this.count = count;
+        this.price = price;
+        this.totalPrice = totalPrice;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Integer getCount() {
+        return count;
+    }
+
+    public void setCount(Integer count) {
+        this.count = count;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public BigDecimal getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(BigDecimal totalPrice) {
+        this.totalPrice = totalPrice;
+    }
+
+    @Override
+    public String toString() {
+        return "CartItem{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", count=" + count +
+                ", price=" + price +
+                ", totalPrice=" + totalPrice +
+                '}';
+    }
+}
+```
+
+```java
+package cn.parzulpan.bean;
+
+import java.math.BigDecimal;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-13
+ * @Desc : 购物车对象
+ */
+
+public class Cart {
+//    private Integer totalCount;
+//    private BigDecimal totalPrice;
+    private Map<Integer, CartItem> items = new LinkedHashMap<>();   // 购物车商品，key 是商品编号，value 是商品信息
+
+    /**
+     * 加入购物车
+     * @param cartItem
+     */
+    public void addItem(CartItem cartItem) {
+        CartItem item = items.get(cartItem.getId());
+        if (item == null) {
+            items.put(cartItem.getId(), cartItem);
+        } else {
+            item.setCount(item.getCount() + 1);
+            item.setTotalPrice(item.getPrice().multiply(new BigDecimal(item.getCount())));
+        }
+
+    }
+
+    /**
+     * 删除购物车中商品
+     * @param id
+     */
+    public void deleteItem(Integer id) {
+        items.remove(id);
+    }
+
+    /**
+     * 清空购物车
+     */
+    public void clear() {
+        items.clear();
+    }
+
+    /**
+     * 修改购物车中商品
+     * @param id
+     * @param count
+     */
+    public void updateCount(Integer id, Integer count) {
+        CartItem item = items.get(id);
+        if (item != null) {
+            item.setCount(count);
+            item.setTotalPrice(item.getPrice().multiply(new BigDecimal(item.getCount())));
+        }
+    }
+
+    public Integer getTotalCount() {
+        Integer totalCount = 0;
+        for (Map.Entry<Integer, CartItem> entry : items.entrySet()) {
+            totalCount += entry.getValue().getCount();
+        }
+
+        return totalCount;
+    }
+
+    public BigDecimal getTotalPrice() {
+        BigDecimal totalPrice = new BigDecimal(0);
+        for (Map.Entry<Integer, CartItem> entry : items.entrySet()) {
+            totalPrice = totalPrice.add(entry.getValue().getTotalPrice());
+        }
+
+        return totalPrice;
+    }
+
+    public Map<Integer, CartItem> getItems() {
+        return items;
+    }
+
+    public void setItems(Map<Integer, CartItem> items) {
+        this.items = items;
+    }
+
+    @Override
+    public String toString() {
+        return "Cart{" +
+                "items=" + items +
+                '}';
+    }
+}
+```
+
+#### 加入购物车
+
+```java
+ // 加入购物车
+protected void addItem(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    // 获取请求的参数
+    int id = WebUtils.parseInt(request.getParameter("id"), 0);
+    // 得到图书信息
+    Book book = bookService.queryBookById(id);
+    // 把图书信息转换为 CartItem
+    CartItem cartItem = new CartItem(book.getId(), book.getName(), 1, book.getPrice(), book.getPrice());
+    // 调用 Cart.addItem(CartItem); 添加商品项
+    Cart cart = (Cart)request.getSession().getAttribute("cart");
+    if (cart == null) {
+        cart = new Cart();
+        request.getSession().setAttribute("cart", cart);
+    }
+    cart.addItem(cartItem);
+
+    System.out.println(cart);
+    System.out.println("请求头 Referer 的值：" + request.getHeader("Referer"));
+
+    // 如果跳回添加商品的页面？
+    // 在 HTTP 协议中有一个请求头，叫 Referer，它可以把请求发起时的浏览器地址栏的地址发送给服务器
+    // 重定向回原来商品所在的地址页面
+//        response.sendRedirect(request.getContextPath());
+    response.sendRedirect(request.getHeader("Referer"));
+}
+```
+
+#### 展示购物车
+
+```jsp
+<%--cart.jsp--%>
+
+            <%--输出 Session 域中的数据--%>
+			<%--如果购物车为空--%>
+			<c:if test="${empty sessionScope.cart.items}">
+				<tr>
+					<td colspan="5"><a href="index.jsp">亲，当前购物车为空！快去添加商品吧～</a></td>
+				</tr>
+			</c:if>
+			<%--如果购物车不为空--%>
+			<c:if test="${not empty sessionScope.cart.items}">
+				<c:forEach items="${sessionScope.cart.items}" var="entry">
+					<tr>
+						<td>${entry.value.name}</td>
+						<td>${entry.value.count}</td>
+						<td>${entry.value.price}</td>
+						<td>${entry.value.totalPrice}</td>
+						<td><a href="#">删除</a></td>
+					</tr>
+				</c:forEach>
+			</c:if>
+
+		</table>
+		<%--如果购物车非空才输出页面的内容--%>
+		<c:if test="${not empty sessionScope.cart.items}">
+			<div class="cart_info">
+				<span class="cart_span">购物车中共有<span class="b_count">${sessionScope.cart.totalCount}</span>件商品</span>
+				<span class="cart_span">总金额<span class="b_price">${sessionScope.cart.totalPrice}</span>元</span>
+				<span class="cart_span"><a href="#">清空购物车</a></span>
+				<span class="cart_span"><a href="pages/cart/checkout.jsp">去结账</a></span>
+			</div>
+		</c:if>
+
+```
+
+#### 删除购物车中商品
+
+```java
+// 删除购物车中商品
+protected void deleteItem(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    // 获取请求的参数
+    int id = WebUtils.parseInt(request.getParameter("id"), 0);
+    // 获得购物车对象
+    Cart cart = (Cart)request.getSession().getAttribute("cart");
+
+    if (cart != null) {
+        cart.deleteItem(id);
+        // 重定向回原来购物车展示页面
+        response.sendRedirect(request.getHeader("Referer"));
+    }
+}
+```
+
+#### 清空购物车
+
+```java
+// 清空购物车
+protected void clear(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    // 获得购物车对象
+    Cart cart = (Cart)request.getSession().getAttribute("cart");
+    if (cart != null) {
+        cart.clear();
+        // 重定向回原来购物车展示页面
+        response.sendRedirect(request.getHeader("Referer"));
+    }
+}
+```
+
+#### 修改购物车中商品
+
+```java
+// 修改购物车中商品
+protected void updateCount(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    // 获取请求的参数
+    int id = WebUtils.parseInt(request.getParameter("id"), 0);
+    int count = WebUtils.parseInt(request.getParameter("count"), 1);
+    // 获得购物车对象
+    Cart cart = (Cart)request.getSession().getAttribute("cart");
+    if (cart != null) {
+        cart.updateCount(id, count);
+        // 重定向回原来购物车展示页面
+        response.sendRedirect(request.getHeader("Referer"));
+    }
+}
+```
+
+#### 回显购物车数据
+
+在添加商品到购物车的时候，保存最后一个添加的商品名称。
+
+### 订单
+
+#### 订单模块分析
+
+由订单的界面分析出订单的模型：
+
+* Order 订单对象
+  * orderId    订单号（唯一）
+  * createTime 下单时间
+  * price      金额
+  * status     订单状态，0 未发货，1 已发货，2 已签收
+  * userId     用户编号
+* OrderItem 订单商品项
+  * id         商品编号
+  * name       商品名称
+  * count      商品数量
+  * price      商品单价
+  * orderId    订单号（唯一）
+  
+订单功能：
+
+* **生成订单**                  `OrderServlet 程序中 createOrder()`      `OrderService 程序中 createOrder(Cart, userId)`
+* **查询所有订单（管理员）**      `OrderServlet 程序中 showAllOrders()`    `OrderService 程序中 showAllOrders()`
+* **发货（管理员）**             `OrderServlet 程序中 sendOrder()`        `OrderService 程序中 sendOrder(orderId)`
+* **查看订单详情（用户/管理员）**  `OrderServlet 程序中 showOrderDetail()`  `OrderService 程序中 showOrderDetail(orderId)`
+* **查看我的订单（用户）**        `OrderServlet 程序中 showMyOrder()`      `OrderService 程序中 showMyOrder(userId)`
+* **签收订单（用户）**            `OrderServlet 程序中 receiverOrder()`    `OrderService 程序中 receiverOrder(orderId)`
+
+OrderDAO 程序：
+* saveOrder(Order) 保存订单
+* queryOrders() 查询全部订单
+* changeOrderStatus(orderId, status) 修改订单状态
+* queryOrderByUser(userId) 根据用户编号查询订单信息
+
+OderItemDAO 程序：
+* saveOrderItem(OrderItem)  保存订单项
+* queryOrderItemsByOrderId(orderId) 根据订单号查询订单明细
+
+#### 订单模块实现
 
 ## 阶段七 结账及添加事务
