@@ -6,12 +6,15 @@ import cn.parzulpan.bean.CartItem;
 import cn.parzulpan.service.BookService;
 import cn.parzulpan.service.BookServiceImpl;
 import cn.parzulpan.utils.WebUtils;
+import com.google.gson.Gson;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @Author : parzulpan
@@ -23,6 +26,31 @@ import java.io.IOException;
 public class CartServlet extends BaseServlet {
     BookService bookService = new BookServiceImpl();
 
+    // 使用 AJAX 加入购物车
+    protected void ajaxAddItem(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // 获取请求的参数
+        int id = WebUtils.parseInt(request.getParameter("id"), 0);
+        // 得到图书信息
+        Book book = bookService.queryBookById(id);
+        // 把图书信息转换为 CartItem
+        CartItem cartItem = new CartItem(book.getId(), book.getName(), 1, book.getPrice(), book.getPrice());
+        // 调用 Cart.addItem(CartItem); 添加商品项
+        Cart cart = (Cart)request.getSession().getAttribute("cart");
+        if (cart == null) {
+            cart = new Cart();
+            request.getSession().setAttribute("cart", cart);
+        }
+        cart.addItem(cartItem);
+
+        // 购物车数据回显，最后一个添加的商品名称
+        request.getSession().setAttribute("lastName", cartItem.getName());
+
+        // 回传给客户端 购物车总的商品数和最后一个添加的商品名称
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("totalCount", cart.getTotalCount());
+        resultMap.put("lastName", cartItem.getName());
+        response.getWriter().write(new Gson().toJson(resultMap));
+    }
 
     // 加入购物车
     protected void addItem(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {

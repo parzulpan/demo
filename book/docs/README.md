@@ -1914,3 +1914,130 @@ public class TransactionFilter implements Filter {
 ```
 
 ## 阶段九 使用 AJAX
+
+### 使用 AJAX 验证用户名是否可用
+
+* 在注册页面的用户名输入框监听失去焦点事件
+* UserServlet 程序 的 ajaxExistsUsername 验证用户名是否可用
+  * 先获取请求的参数 username
+  * 调用 UserService.checkUsername() 验证用户名是否可用
+  * 把客户端需要的结果封装为 Map 对象，然后回传给客户端
+  
+```java
+@WebServlet(name = "UserServlet", urlPatterns = ("/userServlet"))
+public class UserServlet extends BaseServlet {  // 继承 BaseServlet 程序
+    private UserService userService = new UserServiceImpl();
+
+    protected void ajaxExistsUsername(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String username = request.getParameter("username");
+        boolean existUsername = userService.checkUsername(username);
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("existUsername", existUsername);
+
+        Gson gson = new Gson();
+        String json = gson.toJson(resultMap);
+        response.getWriter().write(json);
+    }
+}
+```
+
+```javascript
+$(function() {
+			$("#username").blur(function () {
+				let username = this.value;
+				$.getJSON("userServlet", "action=ajaxExistsUsername&username=" + username, function (data) {
+					console.log(data);
+					if (data.existUsername) {
+						$("span.errorMsg").text("用户名已存在！");
+					} else {
+						$("span.errorMsg").text("用户名可用！");
+					}
+				})
+			});
+});
+```
+
+### 使用 AJAX 把商品添加到购物车
+
+* 点击加入购物车，发送请求
+* CartServlet 程序 的 ajaxAddItem() 处理请求
+  * 获取商品编号
+  * 调用 bookService.queryBookById()
+  * 把 book 对象转换为 CartItem
+  * 获取 Session 中的 Cart 对象
+  * 调用 cart.addItem() 添加商品项
+  * 回传给客户端 购物车总的商品数和最后一个添加的商品名称
+* 客户端根据响应的数据，做页面的**局部更新**
+
+```java
+@WebServlet(name = "CartServlet", urlPatterns = ("/cartServlet"))
+public class CartServlet extends BaseServlet {
+    BookService bookService = new BookServiceImpl();
+
+    // 使用 AJAX 加入购物车
+    protected void ajaxAddItem(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // 获取请求的参数
+        int id = WebUtils.parseInt(request.getParameter("id"), 0);
+        // 得到图书信息
+        Book book = bookService.queryBookById(id);
+        // 把图书信息转换为 CartItem
+        CartItem cartItem = new CartItem(book.getId(), book.getName(), 1, book.getPrice(), book.getPrice());
+        // 调用 Cart.addItem(CartItem); 添加商品项
+        Cart cart = (Cart)request.getSession().getAttribute("cart");
+        if (cart == null) {
+            cart = new Cart();
+            request.getSession().setAttribute("cart", cart);
+        }
+        cart.addItem(cartItem);
+
+        // 购物车数据回显，最后一个添加的商品名称
+        request.getSession().setAttribute("lastName", cartItem.getName());
+
+        // 回传给客户端 购物车总的商品数和最后一个添加的商品名称
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("totalCount", cart.getTotalCount());
+        resultMap.put("lastName", cartItem.getName());
+        response.getWriter().write(new Gson().toJson(resultMap));
+    }
+}
+```
+
+```javascript
+	<script type="text/javascript">
+		$(function () {
+			// 给加入购物车按钮绑定单击事件
+			$("button.addToCart").click(function () {
+				let bookId = $(this).attr("bookId");
+				// location.href = "cartServlet?action=addItem&id=" + bookId;
+				// 使用 AJAX
+				$.getJSON("cartServlet", "action=ajaxAddItem&id=" + bookId, function (data) {
+					$("#cartTotalCount").text("您的购物车中有 " + data.totalCount + " 件商品");
+					$("#cartLastName").text(data.lastName);
+				})
+			});
+		});
+	</script>
+```
+
+```jsp
+			<div style="text-align: center">
+				<%--购物车数据回显--%>
+				<c:if test="${empty sessionScope.cart.items}">
+					<%--购物车为空--%>
+					<%--使用 AJAX 局部更新--%>
+					<span id="cartTotalCount"></span>
+					<div>
+						<span style="color: red" id="cartLastName">当前购物车为空！</span>
+					</div>
+				</c:if>
+				<c:if test="${not empty sessionScope.cart.items}">
+					<%--购物车不为空--%>
+					<%--使用 AJAX 局部更新--%>
+					<span id="cartTotalCount">您的购物车中有 <a style="color: red">${sessionScope.cart.totalCount}</a> 件商品</span>
+					<div>
+						您刚刚将 <span style="color: red" id="cartLastName">${sessionScope.lastName}</span> 加入到了购物车中
+					</div>
+				</c:if>
+
+			</div>
+```

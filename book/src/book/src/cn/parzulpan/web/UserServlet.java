@@ -4,6 +4,7 @@ import cn.parzulpan.bean.User;
 import cn.parzulpan.service.UserService;
 import cn.parzulpan.service.UserServiceImpl;
 import cn.parzulpan.utils.WebUtils;
+import com.google.gson.Gson;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -13,6 +14,8 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.google.code.kaptcha.Constants.KAPTCHA_SESSION_KEY;
 
@@ -49,6 +52,17 @@ public class UserServlet extends BaseServlet {  // 继承 BaseServlet 程序
 //    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 //
 //    }
+
+    protected void ajaxExistsUsername(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String username = request.getParameter("username");
+        boolean existUsername = userService.checkUsername(username);
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("existUsername", existUsername);
+
+        Gson gson = new Gson();
+        String json = gson.toJson(resultMap);
+        response.getWriter().write(json);
+    }
 
     /**
      * 处理登录的功能

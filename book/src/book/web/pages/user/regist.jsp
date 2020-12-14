@@ -16,6 +16,18 @@
 	</style>
 	<script type="text/javascript">
 		$(function() {
+			$("#username").blur(function () {
+				let username = this.value;
+				$.getJSON("userServlet", "action=ajaxExistsUsername&username=" + username, function (data) {
+					console.log(data);
+					if (data.existUsername) {
+						$("span.errorMsg").text("用户名已存在！");
+					} else {
+						$("span.errorMsg").text("用户名可用！");
+					}
+				})
+			});
+
 			$("#sub_btn").click(function () {
 				// 验证用户名：必须由字母，数字下划线组成，并且长度为 5 到 12 位
 				// 1. 获取用户名输入框的内容
