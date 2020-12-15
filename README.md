@@ -13,8 +13,12 @@ project demo repository.
 * **JavaBasis**
   * [Docs](JavaBasis/README.md)
   * [Src](JavaBasis/src/code)
-* JavaWeb
+* **JavaWeb**
   * [Docs](JavaBasis/note)
   * [Src](JavaBasis/src)
+* **MyBatis**
+  * **MyBatis 入门**
+    * [Docs](MyBatis/docs/MyBatis入门.md)
+    * [Src](JavaBasis/src/mybatisBase)
 
 ## 说明

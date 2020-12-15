@@ -1,6 +1,6 @@
 # 书城网站 项目说明
 
-[项目地址](https://github.com/parzulpan/demo)
+[项目地址](https://github.com/parzulpan/demo/book/src)
 
 ## 阶段一 登录、注册的验证
 
@@ -2041,3 +2041,5 @@ public class CartServlet extends BaseServlet {
 
 			</div>
 ```
+
+## 总结
