@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--持久层接口的映射文件-->
+<mapper namespace="cn.parzulpan.dao.UserDAO">
+    <select id="findAll" resultType="cn.parzulpan.domain.User">
+        select * from user;
+    </select>
+</mapper>

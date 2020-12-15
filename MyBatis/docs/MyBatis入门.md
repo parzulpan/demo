@@ -485,4 +485,70 @@ public class MyBatisATest {
 * 在使用基于注解的 MyBatis 配置时，不需要编写持久层接口的映射文件；
 * 在实际开发中，都是越简便越好，不管使用 XML 还是注解配置，都是采用不写 DAO 实现类的方式。但是 MyBatis 它是支持写 DAO 实现类的。
 
+## MyBatis 的设计模式分析
+
+```java
+package cn.parzulpan.test;
+
+import cn.parzulpan.dao.UserDAO;
+import cn.parzulpan.domain.User;
+import org.apache.ibatis.io.Resources;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12-15
+ * @Desc :
+ */
+
+public class MyBatisTest {
+    public static void main(String[] args) throws IOException {
+        // 1. 读取配置文件
+        // 使用类加载器，它只能读取类路径的配置文件
+        // 使用 ServletContext 对象的 getRealPath()
+        InputStream is = Resources.getResourceAsStream("SqlMapConfig.xml");
+
+        // 2. 创建 SqlSessionFactory 的构建者对象
+        SqlSessionFactoryBuilder builder = new SqlSessionFactoryBuilder();
+        // 3. 使用构建者创建工厂对象 SqlSessionFactory
+        // 创建工厂对象 使用了建造者模式
+        // 优势：把对象的创建细节隐藏，使用者直接调用方法即可拿到对象
+        SqlSessionFactory factory = builder.build(is);
+
+        // 4. 使用 SqlSessionFactory 生产 SqlSession 对象
+        // 生产 SqlSession 对象 使用了工厂模式
+        // 优势：解藕，降低了类之间的依赖关系
+        SqlSession session = factory.openSession();
+
+        // 5. 使用 SqlSession 对象 创建 DAO 接口的的代理对象
+        // 创建 DAO 接口的代理对象 使用了代理模式
+        // 优势：在不修改源码的基础上对已有方法增强
+        UserDAO userDAO = session.getMapper(UserDAO.class);
+
+        // 6. 使用代理对象执行方法
+        List<User> users = userDAO.findAll();
+        users.forEach(System.out::println);
+
+        // 7. 释放资源
+        session.close();
+        is.close();
+    }
+}
+```
+
+推荐阅读：
+
+* [建造者模式](https://www.cnblogs.com/parzulpan/p/13547821.html)
+* [简单工厂模式](https://www.cnblogs.com/parzulpan/p/13546452.html)
+* [工厂方法模式](https://www.cnblogs.com/parzulpan/p/13546456.html)
+* [抽象工厂模式](https://www.cnblogs.com/parzulpan/p/13546465.html)
+* [代理模式](https://www.cnblogs.com/parzulpan/p/13560318.html)
+* [Java 动态代理](https://www.cnblogs.com/parzulpan/p/14131737.html#%E5%8F%8D%E5%B0%84%E7%9A%84%E5%BA%94%E7%94%A8%EF%BC%9A%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86)
+
 ## 总结和练习
