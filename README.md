@@ -19,6 +19,6 @@ project demo repository.
 * **MyBatis**
   * **MyBatis 入门**
     * [Docs](MyBatis/docs/MyBatis入门.md)
-    * [Src](JavaBasis/src/mybatisBase)
+    * [Src](MyBatis/src/mybatisBase)
 
 ## 说明

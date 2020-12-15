@@ -1,6 +1,6 @@
 # MyBatis 入门
 
-[文章源码](https://github.com/parzulpan/demo/MyBatis/src/mybatisBase)
+[文章源码](https://github.com/parzulpan/demo/tree/main/MyBatis/src/mybatisBase)
 
 ## 软件框架
 
