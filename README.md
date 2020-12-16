@@ -23,5 +23,8 @@ project demo repository.
   * **自定义 MyBatis**
     * [Docs](MyBatis/docs/自定义MyBatis.md)
     * [Src](MyBatis/src/customMyBatis)
+  * **MyBatis CRUD**
+    * [Docs](MyBatis/docs/MyBatis CRUD.md)
+    * [Src](MyBatis/src/MyBatisCRUD)
 
 ## 说明

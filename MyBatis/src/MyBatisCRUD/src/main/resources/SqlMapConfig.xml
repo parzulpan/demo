@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<!--Mybatis 的主配置文件-->
+<configuration>
+
+    <!-- 使用 typeAliases 配置别名，它只能配置 domain 中类的别名 -->
+    <typeAliases>
+        <!-- 单个别名定义，alias 指定别名，type 指定实体类全限定类名，当指定了别名就不区分大小了-->
+<!--        <typeAlias alias="user" type="cn.parzulpan.domain.User"/>-->
+        <!-- 批量别名定义，扫描整个包下的类，别名为类名，不区分大小-->
+        <package name="cn.parzulpan.domain"/>
+    </typeAliases>
+
+    <!--配置 MyBatis 环境-->
+    <environments default="mysql">
+        <!--配置 MySQL 环境-->
+        <environment id="mysql">
+            <!--配置事务的类型-->
+            <transactionManager type="JDBC"/>
+            <!--配置连接数据库的信息，用的是数据源（连接池）-->
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/mybatisT?useSSL=false"/>
+                <property name="username" value="root"/>
+                <property name="password" value="root"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <!--告知 MyBatis 映射配置的位置-->
+    <mappers>
+        <!-- XML 方式-->
+        <!-- 使用相对于类路径的资源 -->
+<!--        <mapper resource="cn/parzulpan/dao/UserDAO.xml"/>-->
+
+        <!--指定被注解的 DAO 全限定类名-->
+        <!-- 使用 mapper 接口类路径 -->
+        <!-- 此种方法要求 mapper 接口名称 和 mapper 映射文件名称 相同，且放在同一个目录中 -->
+<!--        <mapper class="cn.parzulpan.dao.UserDAO"/>-->
+
+        <!-- 使用 package 标签，用于指定 DAO 接口所在的包，指定之后就不许写 mapper 以及 resource 或 class 了 -->
+        <!-- 此种方法要求 mapper 接口名称 和 mapper 映射文件名称 相同，且放在同一个目录中 -->
+        <package name="cn.parzulpan.dao"/>
+    </mappers>
+</configuration>

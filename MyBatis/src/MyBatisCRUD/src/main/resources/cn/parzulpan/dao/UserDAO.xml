@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--持久层接口的映射文件-->
+<mapper namespace="cn.parzulpan.dao.UserDAO">
+    <select id="findAll" resultType="user">
+        select * from user;
+    </select>
+
+    <select id="findById" resultType="USER" parameterType="java.lang.Integer">
+        select * from user where id = #{id};
+    </select>
+
+    <insert id="saveUser" parameterType="cn.parzulpan.domain.User">
+        # 扩展：新增用户 id 的返回值，在 insert 之后执行
+        <selectKey keyColumn="id" keyProperty="id" resultType="int" order="AFTER">
+            select last_insert_id();
+        </selectKey>
+        insert into user(username, birthday, sex, address) values (#{username}, #{birthday}, #{sex}, #{address});
+    </insert>
+
+    <update id="updateUser" parameterType="cn.parzulpan.domain.User">
+        update user set username = #{username}, birthday = #{birthday}, sex = #{sex}, address = #{address} where id = #{id};
+    </update>
+
+    <delete id="deleteUser" parameterType="java.lang.Integer">
+        delete from user where id = #{id};
+    </delete>
+
+    <!-- 模糊查询操作的第一种配置方式 -->
+    <!-- 实际执行语句 Preparing: select * from user where username like ?; -->
+    <!-- 这种方式，在传入字符串实参时，就需要给定模糊查询的标识% -->
+    <select id="findByName" resultType="cn.parzulpan.domain.User" parameterType="String">
+        select * from user where username like #{username};
+    </select>
+
+    <!--模糊查询操作的第二种配置方式-->
+    <!-- 实际执行语句 Preparing: select * from user where username like '%Tim%'; -->
+    <!-- 这种方式，在传入字符串实参时，就不需要给定模糊查询的标识% -->
+    <select id="findByNameV2" resultType="cn.parzulpan.domain.User" parameterType="String">
+        select * from user where username like '%${value}%';
+    </select>
+
+    <select id="findTotal" resultType="int">
+        select count(*) from user;
+    </select>
+
+    <!--由于 将 ${} parameterType 传入的内容拼接在 sql 中且不进行 jdbc 类型转换
+    所以，模糊查询操作的不能使用第二种配置方式-->
+    <select id="findByQueryV" resultType="cn.parzulpan.domain.User" parameterType="cn.parzulpan.domain.QueryV">
+        select * from user where username like #{user.username};    # user 是 QueryV 的属性
+    </select>
+
+</mapper>

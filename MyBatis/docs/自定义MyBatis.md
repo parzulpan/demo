@@ -77,7 +77,7 @@
 * **key** 是一个 String，值为 `cn.parzulpan.dao.UserDAO.findAll`
 * **value** 即这个 Mapper 对象，属性有 `String sql` 和 `String domainClassPath`
 
-现在需要准备 **第二件事** **创建代理对象**：
+现在需要准备 **第一件事** **创建代理对象**：
 
 ```java
 // 5. 使用 SqlSession 对象 创建 DAO 接口的的代理对象
@@ -632,3 +632,17 @@ public @interface Select {
 ```
 
 ## 总结和练习
+
+---
+
+**自定义 MyBatis 步骤总结**：
+
+* 第一步：SqlSessionBuilder 接收 SqlMapConfig.xml 文件流，构建出 SqlSessionFactory 对象；
+* 第二步：SqlSessionFactory 加载解析 SqlMapConfig.xml 文件流，得到连接信息和映射信息，用来生产出真正操作数据库的 SqlSession 对象；
+* 第三步：SqlSession 对象有两大作用，分别是生成接口代理对象和定义通用增删改查方法。
+* 第四步：
+  * 第一步：在 SqlSessionImpl 对象的 `getMapper()` 分两步实现：1. 先用核心配置对象和连接对象；2. 通过代理模式创建出代理类对象；
+  * 第二步：在 Executor 工具类 `selectList()` 等方法分两步实现：1. 得到连接对象；2. 得到 SQL 语句，进行 JDBC 操作。
+* 第五步：封装结果集，变成 Java 对象返回给调用者。
+
+---
