@@ -1,13 +1,11 @@
 package cn.parzulpan.dao;
 
-import cn.parzulpan.domain.QueryV;
 import cn.parzulpan.domain.User;
-import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
 /**
- * @Author : parzulpan
+ * @Author : cn.parzulpan
  * @Time : 2020-12
  * @Desc :
  */
@@ -67,18 +65,4 @@ public interface UserDAO {
      * @return
      */
     int findTotal();
-
-    /**
-     * 根据 QueryV 中的条件查询用户
-     * @param v
-     * @return
-     */
-    List<User> findByQueryV(QueryV v);
-
-    /**
-     * 根据用户信息，查询用户列表
-     * @param user
-     * @return
-     */
-    List<User> findByUser(User user);
 }

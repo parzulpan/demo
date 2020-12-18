@@ -53,4 +53,14 @@
         select * from user where username like #{user.username};    # user 是 QueryV 的属性
     </select>
 
+    <select id="findByUser" resultType="User" parameterType="User">
+        select * from user where 1 = 1
+        <if test="username != null and username != ''">
+            and username like #{username}
+        </if>
+        <if test="address != null">
+            and address like #{address}
+        </if>
+    </select>
+
 </mapper>

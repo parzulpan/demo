@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+    <typeAliases>
+        <package name="cn.parzulpan.domain"/>
+    </typeAliases>
+    <environments default="mysql">
+        <environment id="mysql">
+            <!-- 配置事务控制的方式 -->
+            <transactionManager type="JDBC"/>
+            <!-- 配置连接数据库的必备信息  type属性表示是否使用数据源（连接池）-->
+            <dataSource type="JNDI">
+                <property name="data_source" value="java:comp/env/jdbc/mybatisT"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <!-- 指定mapper配置文件的位置 -->
+    <mappers>
+        <package name="cn.parzulpan.dao"/>
+    </mappers>
+</configuration>

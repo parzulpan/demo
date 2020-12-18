@@ -367,6 +367,28 @@ public class MyBatisCRUDTest {
 编写 QueryV：
 
 ```java
+package cn.parzulpan.domain;
+
+import java.io.Serializable;
+
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12
+ * @Desc :
+ */
+
+public class QueryV implements Serializable {
+    private static final long serialVersionUID = 93481234250463743L;
+    private User user;
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+}
 
 ```
 
@@ -584,3 +606,5 @@ MyBatis 支持的默认别名，我们也可以采用自定义别名方式来开
 ```
 
 ## 练习和总结
+
+[推荐观看代理 DAO 的执行过程](https://images.cnblogs.com/cnblogs_com/parzulpan/1900685/o_201216071319%E4%BB%A3%E7%90%86%20DAO%20%E7%9A%84%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B.png)

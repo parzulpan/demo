@@ -107,4 +107,15 @@ public class MyBatisCRUDTest {
         List<User> userList = userDAO.findByQueryV(queryV);
         userList.forEach(System.out::println);
     }
+
+    @Test
+    public void findByUserTest() {
+        User user = new User();
+        user.setUsername("%Tim%");
+//        user.setAddress("%北京%");
+        List<User> users = userDAO.findByUser(user);
+        for (User u : users) {
+            System.out.println(u);
+        }
+    }
 }

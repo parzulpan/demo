@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--持久层接口的映射文件-->
+<mapper namespace="cn.cn.parzulpan.dao.UserDAO">
+    <select id="findAll" resultType="cn.parzulpan.domain.User">
+        select * from user;
+    </select>
+
+    <select id="findById" resultType="USER" parameterType="java.lang.Integer">
+        select * from user where id = #{id};
+    </select>
+
+    <insert id="saveUser" parameterType="User">
+        <selectKey keyColumn="id" keyProperty="id" resultType="int" order="AFTER">
+            select last_insert_id();
+        </selectKey>
+        insert into user(username, birthday, sex, address) values (#{username}, #{birthday}, #{sex}, #{address});
+    </insert>
+
+    <update id="updateUser" parameterType="User">
+        update user set username = #{username}, birthday = #{birthday}, sex = #{sex}, address = #{address} where id = #{id};
+    </update>
+
+    <delete id="deleteUser" parameterType="java.lang.Integer">
+        delete from user where id = #{id};
+    </delete>
+
+    <!-- 模糊查询操作的第一种配置方式 -->
+    <!-- 实际执行语句 Preparing: select * from user where username like ?; -->
+    <!-- 这种方式，在传入字符串实参时，就需要给定模糊查询的标识% -->
+    <select id="findByName" resultType="User" parameterType="String">
+        select * from user where username like #{username};
+    </select>
+
+    <select id="findTotal" resultType="int">
+        select count(*) from user;
+    </select>
+
+</mapper>
