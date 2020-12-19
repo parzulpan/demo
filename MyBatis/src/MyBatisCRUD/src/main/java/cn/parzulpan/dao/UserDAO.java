@@ -81,4 +81,51 @@ public interface UserDAO {
      * @return
      */
     List<User> findByUser(User user);
+
+    /***
+     * 根据用户信息，查询用户列表，提供默认情况
+     * @param user
+     * @return
+     */
+    List<User> findByUserDefault(User user);
+
+    /**
+     * 根据用户信息，查询用户列表，使用 Where
+     * @param user
+     * @return
+     */
+    List<User> findByUserWhere(User user);
+
+    /**
+     * 根据 id 集合查询用户
+     * @param v
+     * @return
+     */
+    List<User> findByIds(QueryV v);
+
+    /**
+     * 查询所有用户，同时获取出每个用户下的所有账户信息
+     * @return
+     */
+    List<User> findAllAndAccount();
+
+    /**
+     * 查询所有信息，使用懒加载
+     * @return
+     */
+    List<User> findByIdLazy();
+
+    /**
+     * 根据 ID 查询操作，使用一级缓存
+     * @param id
+     * @return
+     */
+    User findByIdCache(Integer id);
+
+    /**
+     * 根据 ID 查询操作，使用二级缓存
+     * @param id
+     * @return
+     */
+    User findByIdHighCache(Integer id);
 }

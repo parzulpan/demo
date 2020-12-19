@@ -5,6 +5,9 @@
 
 <!--持久层接口的映射文件-->
 <mapper namespace="cn.parzulpan.dao.UserDAO">
+    <!-- 开启二级缓存的支持 -->
+    <cache></cache>
+
     <select id="findAll" resultType="user">
         select * from user;
     </select>
@@ -61,6 +64,76 @@
         <if test="address != null">
             and address like #{address}
         </if>
+    </select>
+
+    <select id="findByUserDefault" resultType="User" parameterType="User">
+        select * from user where 1 = 1
+        <choose>
+            <when test="username !=null and username != ''">
+                and username like #{username}
+            </when>
+            <when test="address != null">
+                and address like #{address}
+            </when>
+            <otherwise>
+                and id > 50
+            </otherwise>
+        </choose>
+    </select>
+
+    <select id="findByUserWhere" resultType="User" parameterType="User">
+        select * from user
+        <where>
+            <if test="username != null and username != ''">
+                and username like #{username}
+            </if>
+            <if test="address != null">
+                and address like #{address}
+            </if>
+        </where>
+    </select>
+
+    <select id="findByIds" resultType="User" parameterType="QueryV">
+        select * from user
+        <where>
+            <if test="ids != null and ids.size() > 0">
+                <foreach collection="ids" open="id in (" close=")" item="uid" separator=",">
+                    #{uid}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <resultMap id="userMap" type="user">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="address" property="address"/>
+        <result column="sex" property="sex"/>
+        <result column="birthday" property="birthday"/>
+
+        <!-- collection 是用于建立一对多中集合属性的对应关系 ofType 用于指定集合元素的数据类型 -->
+        <collection property="accounts" ofType="account">
+            <id column="aid" property="id"/>
+            <result column="uid" property="uid"/>
+            <result column="money" property="money"/>
+        </collection>
+    </resultMap>
+
+    <select id="findAllAndAccount" resultMap="userMap">
+        select u.*, a.id as aid, a.uid, a.money
+        from user u left join account a on u.id = a. uid;
+    </select>
+
+    <select id="findByIdLazy" resultType="user" parameterType="int">
+        select * from user where id = #{uid};
+    </select>
+
+    <select id="findByIdCache" resultType="USER" parameterType="java.lang.Integer">
+        select * from user where id = #{id};
+    </select>
+
+    <select id="findByIdHighCache" resultType="USER" parameterType="java.lang.Integer" useCache="true">
+        select * from user where id = #{id};
     </select>
 
 </mapper>

@@ -13,6 +13,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -116,6 +117,54 @@ public class MyBatisCRUDTest {
         List<User> users = userDAO.findByUser(user);
         for (User u : users) {
             System.out.println(u);
+        }
+    }
+
+    @Test
+    public void findByUserDefaultTest() {
+        User user = new User();
+//        user.setUsername("%Tim%");
+        List<User> users = userDAO.findByUserDefault(user);
+        for (User u : users) {
+            System.out.println(u);
+        }
+    }
+
+    @Test
+    public void findByUserWhereTest() {
+        User user = new User();
+//        user.setUsername("%Tim%");
+        List<User> users = userDAO.findByUserWhere(user);
+        for (User u : users) {
+            System.out.println(u);
+        }
+    }
+
+    @Test
+    public void findByIdsTest() {
+        List<Integer> ids = new ArrayList<>();
+        ids.add(41);
+        ids.add(42);
+        ids.add(43);
+        ids.add(50);
+        ids.add(51);
+        ids.add(60);
+        QueryV queryV = new QueryV();
+        queryV.setIds(ids);
+        List<User> users = userDAO.findByIds(queryV);
+        for (User u : users) {
+            System.out.println(u);
+        }
+    }
+
+    @Test
+    public void findAllAndAccountTest() {
+        List<User> users = userDAO.findAllAndAccount();
+        for (User user : users) {
+            System.out.println();
+            System.out.println("----- " + user.getUsername() + " -----");
+            System.out.println(user);
+            System.out.println(user.getAccounts());
         }
     }
 }
