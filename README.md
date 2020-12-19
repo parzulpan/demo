@@ -24,7 +24,13 @@ project demo repository.
     * [Docs](MyBatis/docs/自定义MyBatis.md)
     * [Src](MyBatis/src/customMyBatis)
   * **MyBatis CRUD**
-    * [Docs](MyBatis/docs/MyBatis CRUD.md)
+    * [Docs](MyBatis/docs/MyBatisCRUD.md)
     * [Src](MyBatis/src/MyBatisCRUD)
+  * **MyBatis JDNI**
+    * [MyBatis连接池和事务控制](MyBatis/docs)
+    * [Src](MyBatis/src/MyBatisJDNI)
+  * **MyBatis Annotataion**
+    * [MyBatis连接池和事务控制](MyBatis/docs)
+    * [Src](MyBatis/src/MyBatisAnnotataion)
 
 ## 说明
