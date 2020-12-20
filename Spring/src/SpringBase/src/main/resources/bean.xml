@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- 把对象的创建交给 Spring 来管理-->
+    <bean id="accountService" class="cn.parzulpan.service.AccountServiceImpl"/>
+    <bean id="accountDAO" class="cn.parzulpan.dao.AccountDAOImpl"/>
+
+    <!--bean 的三种创建方式-->
+    <!-- 第一种方式：使用默认无参构造函数
+         它会根据默认无参构造函数来创建类对象。如果 bean 中没有默认无参构造函数，将会创建失败。
+    -->
+<!--    <bean id="accountServiceIOC" class="cn.parzulpan.service.AccountServiceImplIOC"/>-->
+<!--    <bean id="accountDAOIOC" class="cn.parzulpan.dao.AccountDAOImplIOC"/>-->
+
+    <!-- 第二种方式：使用实例工厂的方法创建对象
+         先把工厂的创建交给 Spring 来管理，然后在使用工厂的 bean 来调用里面的方法
+         factory-bean 属性：用于指定实例工厂 bean 的 id
+         factory-method 属性：用于指定实例工厂中创建对象的方法
+    -->
+<!--    <bean id="instanceFactory" class="cn.parzulpan.factory.InstanceFactory"/>-->
+<!--    <bean id="accountServiceIOC" factory-bean="instanceFactory" factory-method="getAccountService"/>-->
+<!--    <bean id="accountDAOIOC" class="cn.parzulpan.dao.AccountDAOImplIOC"/>-->
+
+    <!-- 第三种方式：使用静态工厂的方法创建对象
+         使用某个类中的静态方法创建对象，并存入 Spring 核心容器
+         id 属性：指定 bean 的 id，用于从容器中获取
+         class 属性：指定静态工厂的全限定类名
+         factory-method 属性：指定生产对象的静态方法
+    -->
+<!--    <bean id="accountServiceIOC" class="cn.parzulpan.factory.StaticFactory" factory-method="getAccountService"/>-->
+<!--    <bean id="accountDAOIOC" class="cn.parzulpan.dao.AccountDAOImplIOC"/>-->
+
+    <!-- bean 的作用范围和生命周期 -->
+    <bean id="accountServiceIOC" class="cn.parzulpan.service.AccountServiceImplIOC" scope="prototype"
+          init-method="init" destroy-method="destroy"/>
+    <bean id="accountDAOIOC" class="cn.parzulpan.dao.AccountDAOImplIOC" scope="prototype"
+          init-method="init" destroy-method="destroy"/>
+
+    <!-- 构造函数注入
+         类中需要提供一个对应参数列表的构造函数
+         属性：
+            index 指定参数在构造函数参数列表的索引位置
+            type 指定参数在构造函数中的数据类型
+            name 指定参数在构造函数中的名称
+            value 它能赋的值是基本数据类型和 String 类型
+            ref 它能赋的值是其他 bean 类型，也就是说，必须得是在配置文件中配置过的 bean
+            前三个都是找给谁赋值，后两个指的是赋什么值的
+    -->
+    <bean id="accountServiceDI" class="cn.parzulpan.service.AccountServiceImplDI">
+        <constructor-arg name="name" value="parzulpan"/>
+        <constructor-arg name="age" value="100"/>
+        <constructor-arg name="birthday" ref="now"/>
+    </bean>
+    <bean id="now" class="java.util.Date"/>
+
+
+    <!-- set 方法 注入
+         类中需要提供属性的 set 方法
+         属性：
+            name：找的是类中 set 方法后面的部分
+            ref：给属性赋值是其他 bean 类型的
+            value：给属性赋值是基本数据类型和 string 类型的
+    -->
+    <bean id="accountServiceDI2" class="cn.parzulpan.service.AccountServiceImplDI2">
+        <property name="name" value="库里"/>
+        <property name="age" value="30"/>
+        <property name="birthday" ref="nowSet"/>
+    </bean>
+    <bean id="nowSet" class="java.util.Date"/>
+
+    <!-- 注入集合属性
+         在注入集合数据时，只要结构相同，标签可以互换
+         List 结构的：array, list, set
+         Map 结构的：map, entry, props, prop
+    -->
+    <bean id="accountServiceDI3" class="cn.parzulpan.service.AccountServiceImplDI3">
+        <property name="myStr">
+            <set>
+                <value>AAA</value>
+                <value>BBB</value>
+                <value>CCC</value>
+            </set>
+        </property>
+        <property name="myList">
+            <list>
+                <value>AAA</value>
+                <value>BBB</value>
+                <value>CCC</value>
+            </list>
+        </property>
+        <property name="mySet">
+            <set>
+                <value>AAA</value>
+                <value>BBB</value>
+                <value>CCC</value>
+            </set>
+        </property>
+        <property name="myMap">
+            <map>
+                <entry key="testA" value="aaa"/>
+                <entry key="testB" value="bbb"/>
+            </map>
+        </property>
+        <property name="myProps">
+            <props>
+                <prop key="testA">aaa</prop>
+                <prop key="testB">bbb</prop>
+            </props>
+        </property>
+    </bean>
+
+</beans>
