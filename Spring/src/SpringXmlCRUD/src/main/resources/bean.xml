@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- 配置 Service -->
+    <bean id="bankAccountService" class="cn.parzulpan.service.BankAccountServiceImpl">
+        <!-- 注入DAO，set() 形式-->
+        <property name="bankAccountDAO" ref="bankAccountDAO"/>
+    </bean>
+
+    <!-- 配置 DAO -->
+    <bean id="bankAccountDAO" class="cn.parzulpan.dao.BankAccountDAOImpl">
+        <!-- 注入QueryRunner，set() 形式-->
+        <property name="runner" ref="runner"/>
+    </bean>
+
+    <!-- 配置 QueryRunner -->
+    <bean id="runner" class="org.apache.commons.dbutils.QueryRunner" scope="prototype">
+        <!-- 注入数据源，构造函数形式-->
+        <constructor-arg name="ds" ref="dataSource"/>
+    </bean>
+
+    <!-- 配置 数据源 -->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"/>
+        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/springT?useSSL=false"/>
+        <property name="user" value="root"/>
+        <property name="password" value="root"/>
+    </bean>
+</beans>
