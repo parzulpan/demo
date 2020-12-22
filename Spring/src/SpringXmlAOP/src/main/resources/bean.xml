@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/aop
+        https://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!-- 配置 Spring IOC -->
+    <!-- 将 AccountService 对象配置进来 -->
+    <bean id="accountService" class="cn.parzulpan.service.AccountServiceImpl"/>
+    <!-- 将 Logger 对象配置进来，是一个 Advice 通知 -->
+    <bean id="logger" class="cn.parzulpan.utils.Logger"/>
+
+    <!-- 配置 Spring AOP -->
+    <!-- 1. 使用 aop:config 声明 AOP 配置 -->
+    <aop:config>
+        <aop:pointcut id="allMethodPCRGlobal"
+                      expression="execution(* cn.parzulpan.service.*.*(..))"/>
+        
+        <!-- 2. 使用 aop:aspect 配置切面 -->
+        <aop:aspect id="logAdvice" ref="logger">
+            <!-- 3. 配置通知的类型 -->
+            <aop:before method="printLogBefore"
+                        pointcut="execution(public void cn.parzulpan.service.AccountServiceImpl.saveAccount())"/>
+            <aop:after method="printLogAfter"
+                       pointcut-ref="allMethodPCR"/>
+            <aop:around method="printLogAround"
+                        pointcut-ref="allMethodPCRGlobal"/>
+
+            <aop:pointcut id="allMethodPCR"
+                          expression="execution(* cn.parzulpan.service.*.*(..))"/>
+        </aop:aspect>
+    </aop:config>
+</beans>

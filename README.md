@@ -41,5 +41,10 @@ project demo repository.
     * [Src-SpringIOC](Spring/src/SpringIOC)
     * [Src-SpringXmlCRUD](Spring/src/SpringXmlCRUD)
     * [Src-SpringAnnotationCRUD](Spring/src/SpringAnnotationCRUD)
+  * **Spring AOP**
+    * [Docs](Spring/docs/SpringAOP.md)
+    * [Src-SpringAOP](Spring/src/SpringAOP)
+    * [Src-SpringXmlAOP](Spring/src/SpringXmlAOP)
+    * [Src-SpringAnnotationAOP](Spring/src/SpringAnnotationAOP)
 
 ## 说明
