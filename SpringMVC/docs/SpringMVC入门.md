@@ -512,7 +512,7 @@ public class ParamsController {
 请求参数的绑定测试：params.jsp
 
 <details>
-<summary>查看 app-servlet.xml</summary>
+<summary>查看 params.jsp</summary>
 
 ```jsp
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
@@ -582,31 +582,490 @@ public class ParamsController {
 
 ### 特殊情况
 
+由于参数都是以字符串的形式传输，当把控制器中方法参数的类型改为 Date 时，就会出现错误：`Failed to convert value of type 'java.lang.String' to required type 'java.util.Date'`，为了解决这个问题，可以自定义一个类型转换器。
+
+**使用步骤**：
+
+* 定义一个类，实现 Converter 接口，该接口有`<S, T>`两个泛型，S 表示接受的类型，T 表示目标类型
+
+    <details>
+    <summary>查看 StringToDateConverter.java</summary>
+
+    ```java
+    package cn.parzulpan.utils;
+
+    import org.springframework.core.convert.converter.Converter;
+
+    import java.text.ParseException;
+    import java.text.SimpleDateFormat;
+    import java.util.Date;
+
+    /**
+    * @Author : parzulpan
+    * @Time : 2020-12
+    * @Desc : 自定义类型转换器
+    */
+
+    public class StringToDateConverter implements Converter<String, Date> {
+
+        @Override
+        public Date convert(String s) {
+            if (s.equals("")) {
+                throw new RuntimeException("请输入数据");
+            }
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            try {
+                return sdf.parse(s);
+            } catch (ParseException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+    ```
+
+    </details>
+
+* 在 SpringMVC 配置文件中配置类型转换器
+* 在 `annotation-driven` 标签中引用自定义的类型转换服务
+
+    <details>
+    <summary>查看 app-servlet.xml</summary>
+
+    ```xml
+        <!-- 配置自定义类型转换器 -->
+        <bean id="conversionService" class="org.springframework.context.support.ConversionServiceFactoryBean">
+            <property name="converters">
+                <set>
+                    <bean class="cn.parzulpan.utils.StringToDateConverter"/>
+                </set>
+            </property>
+        </bean>
+
+        <!-- 开启 Spring MVC 注解支持，并引用自定义的类型转换服务 -->
+        <mvc:annotation-driven conversion-service="conversionService"/>
+    ```
+
+    </details>
+
+* 测试
+
+    <details>
+    <summary>查看 CovertController.java</summary>
+
+    ```java
+    /**
+    * @Author : parzulpan
+    * @Time : 2020-12
+    * @Desc : 自定义类型转换器的控制器
+    */
+
+    @Controller
+    @RequestMapping("/convert")
+    public class CovertController {
+
+        @RequestMapping("/stringToDate")
+        public String stringToDate(Date date) {
+            System.out.println(date);
+            return "hello";
+        }
+    }
+    ```
+
+    </details>
+
+    <details>
+    <summary>查看 converter.jsp</summary>
+
+    ```jsp
+    <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+    <html>
+    <head>
+        <title>自定义类型转换器</title>
+    </head>
+    <body>
+
+        <a href="convert/stringToDate?date=2018-01-01">根据日期删除账户</a>
+
+    </body>
+    </html>
+    ```
+
+    </details>
+
+### 使用 ServletAPI 对象作为方法参数
+
+SpringMVC 还支持使用原始 ServletAPI 对象作为控制器方法的参数。支持原始 ServletAPI 对象有：
+
+* HttpServletRequest
+* HttpServletResponse
+* HttpSession
+* java.security.Principal
+* Locale
+* InputStream
+* OutputStream
+* Reader
+* Writer
+
+```java
+/**
+ * @Author : parzulpan
+ * @Time : 2020-12
+ * @Desc : 原始 ServletAPI 作为控制器参数
+ */
+
+@Controller
+@RequestMapping("/servletAPI")
+public class ServletAPIController {
+
+    @RequestMapping("/testServletAPI")
+    public String testServletAPI(HttpServletRequest request, HttpServletResponse response, HttpSession session) {
+        System.out.println(request);
+        System.out.println(response);
+        System.out.println(session);
+        return "world";
+    }
+}
+```
+
 ## SpringMVC 常用注解
 
 ### RequestParam
 
+* 作用：
+  * 把请求中指定名称的参数给控制器中的形参赋值。
+* 属性：
+  * value：请求参数中的名称。
+  * required：请求参数中是否必须提供此参数。默认值：true。表示必须提供，如果不提供将报错。
+
+**使用示例：**
+
+```jsp
+<!-- requestParams 注解的使用 -->
+<a href="anno/useRequestParam?name=test">requestParam 注解</a>
+```
+
+```java
+@RequestMapping("/useRequestParam")
+public String useRequestParam(@RequestParam("name") String username, @RequestParam(value="age",required=false) Integer age){
+    System.out.println(username + "," + age);
+    return "hello";
+}
+```
+
 ### RequestBody
+
+* 作用：
+  * 用于获取请求体内容。直接使用得到是 `key=value&key=value...` 结构的数据。**get 请求方式不适用**。
+* 属性：
+  * required：是否必须有请求体。默认值：true。当取值为 true 时，get 请求方式会报错。如果取值为 false，get 请求得到是 null。
+
+**使用示例：**
+
+post 请求 jsp 代码：
+
+```jsp
+<!-- RequestBody 注解 -->
+<form action="anno/useRequestBody" method="post">
+    用户名称：<input type="text" name="username" ><br/>
+    用户密码：<input type="password" name="password" ><br/>
+    用户年龄：<input type="text" name="age" ><br/>
+    <input type="submit" value="保存">
+</form>
+```
+
+get 请求 jsp 代码：
+
+```jsp
+<a href="anno/useRequestBody?body=test">requestBody 注解 get 请求</a>
+```
+
+```java
+@RequestMapping("/useRequestBody")
+public String useRequestBody(@RequestBody(required=false) String body){
+    System.out.println(body);
+    return "hello";
+}
+```
 
 ### PathVaribale
 
+* 作用：
+  * 用于绑定 url 中的占位符。例如：请求 url 中 `/delete/{id}`，这个 `{id}` 就是 url 占位符。url 支持占位符是 Spring3.0 之后加入的。是 SpringMVC 支持 Restful URL 的一个重要标志。
+* 属性：
+  * value：用于指定 url 中占位符名称。
+  * required：是否必须提供占位符。
+
 #### RESTful URL
+
+RESTful 是一种编程风格，它结构清晰，符合标准、易于理解、扩展方便。
+
+我们知道，在 HTTP 协议里面，有四个表示操作方式的动词：**GET**、**POST**、**PUT**、**DELETE**。它们分别对应四种基本操作：GET 用来获取资源，POST 用来新建资源，PUT 用来更新资源，DELETE 用来删除资源。
+
+**原来的方式**：
+
+```java
+@Controller()
+@RequestMapping("/")
+public class UserController() {
+
+    @RequestMapping("/user/findAll")
+    public String findAll(){};
+
+    @RequestMapping("/user/save")
+    public String save(){};
+
+    @RequestMapping("/user/update")
+    public String update(){};
+
+    @RequestMapping("/user/delete")
+    public String delete(Integer id){};
+}
+```
+
+**Restful 的方式**：
+
+```java
+@Controller()
+@RequestMapping("/")
+public class UserController() {
+
+    @RequestMapping(value="/user", method=RequestMethod.GET)
+    public String findAll(){};
+
+    @RequestMapping(value="/user", method=RequestMethod.POST)
+    public String save(){};
+
+    @RequestMapping(value="/user", method=RequestMethod.PUT)
+    public String update(){};
+
+    @RequestMapping(value="/user/{id}", method=RequestMethod.DELETE)
+    public String delete(@PathVariable("id") Integer id){};
+
+    @RequestMapping(value="/user", method=RequestMethod.DELETE)
+    public String delete(){};
+}
+```
+
+**使用示例：**
+
+```jsp
+<!-- PathVariable 注解 -->
+<a href="anno/usePathVariable/100">pathVariable 注解</a>
+```
+
+```java
+@RequestMapping("/usePathVariable/{id}")
+public String usePathVariable(@PathVariable("id") Integer id){
+    System.out.println(id);
+    return "hello";
+}
+```
 
 ### RequestHeader
 
+* 作用：
+  * 用于获取请求消息头。
+* 属性：
+  * value：提供消息头名称。
+  * required：是否必须有此消息头。
+
+**使用示例：**
+
+```jsp
+<!-- RequestHeader 注解 -->
+<a href="anno/useRequestHeader">获取请求消息头</a>
+```
+
+```java
+@RequestMapping("/useRequestHeader")
+public String useRequestHeader(@RequestHeader(value="Accept-Language", required=false) String requestHeader){
+    System.out.println(requestHeader);
+    return "hello";
+}
+```
+
 ### CookieValue
+
+* 作用：
+  * 用于把指定 cookie 名称的值传入控制器方法参数。
+* 属性：
+  * value：指定 cookie 的名称。
+  * required：是否必须有此 cookie。
+
+**使用示例：**
+
+```jsp
+<!-- CookieValue 注解 -->
+<a href="anno/useCookieValue">绑定 cookie 的值</a>
+```
+
+```java
+@RequestMapping("/useCookieValue")
+public String useCookieValue(@CookieValue(value="JSESSIONID",required=false) String cookieValue){
+    System.out.println(cookieValue);
+    return "hello";
+}
+```
 
 ### ModelAttribute
 
+* 作用：
+  * 它可以用于修饰方法和参数。
+  * 出现在方法上，表示当前方法会在控制器的方法执行之前执行。它可以修饰没有返回值的方法，也可以修饰有具体返回值的方法。
+  * 出现在参数上，获取指定的数据给参数赋值。
+* 属性：
+  * value：用于获取数据的 key。key 可以是 JavaBean 的属性名称，也可以是 map 结构的 key。
+* 场景：
+  * 当表单提交数据不是完整的实体类数据时，保证没有提交数据的字段使用数据库对象原来的数据。
+
+**基于 JavaBean 属性的 使用示例：**
+
+```jsp
+<a href="anno/testModelAttribute?username=test">测试 ModelAttribute</a>
+```
+
+```java
+@ModelAttribute
+public void showModel(User user) {
+    System.out.println("执行了 showModel 方法" + user.getUsername());
+}
+
+@RequestMapping("/testModelAttribute")
+public String testModelAttribute(User user) {
+    System.out.println("执行了控制器的方法"+ user.getUsername());
+    return "hello";
+}
+```
+
+**基于 Map 的应用场景 ModelAttribute 修饰方法带返回值 使用示例：**
+
+```jsp
+<!-- 修改用户信息 -->
+<form action="anno/updateUser" method="post">
+    用户名称：<input type="text" name="username" ><br/>
+    用户年龄：<input type="text" name="age" ><br/>
+    <input type="submit" value="保存">
+</form>
+```
+
+```java
+// 查询数据库中用户信息
+@ModelAttribute
+public User showModel(String username) {
+    //模拟去数据库查询
+    User abc = findUserByName(username);
+    System.out.println("执行了 showModel 方法" + abc);
+    return abc;
+}
+
+// 模拟修改用户方法
+@RequestMapping("/updateUser")
+public String testModelAttribute(User user) {
+    System.out.println("控制器中处理请求的方法：修改用户：" + user);
+    return "hello";
+}
+
+// 模拟去数据库查询
+private User findUserByName(String username) {
+    User user = new User();
+    user.setUsername(username);
+    user.setAge(19);
+    user.setPassword("123456");
+    return user;
+}
+```
+
+**基于 Map 的应用场景 ModelAttribute 修饰方法不带返回值 使用示例：**
+
+```jsp
+<!-- 修改用户信息 -->
+<form action="anno/updateUser" method="post">
+    用户名称：<input type="text" name="username" ><br/>
+    用户年龄：<input type="text" name="age" ><br/>
+    <input type="submit" value="保存">
+</form>
+```
+
+```java
+// 查询数据库中用户信息
+@ModelAttribute
+public void showModel(String username, Map<String, User> map) {
+    //模拟去数据库查询
+    User user = findUserByName(username);
+    System.out.println("执行了 showModel 方法" + user);
+    map.put("abc",user);
+}
+
+// 模拟修改用户方法
+@RequestMapping("/updateUser")
+public String testModelAttribute(@ModelAttribute("abc") User user) {
+    System.out.println("控制器中处理请求的方法：修改用户："+user);
+    return "success";
+}
+
+// 模拟去数据库查询
+private User findUserByName(String username) {
+    User user = new User();
+    user.setUsername(username);
+    user.setAge(19);
+    user.setPassword("123456");
+    return user;
+}
+```
+
 ### SessionAttribute
 
+* 作用：
+  * 用于多次执行控制器方法间的参数共享。
+* 属性：
+  * value：用于指定存入的属性名称。
+  * type：用于指定存入的数据类型。
+
+**使用示例：**
+
+```jsp
+<!-- SessionAttribute 注解的使用 -->
+<a href="anno/testPut">存入 SessionAttribute</a>
+<hr/>
+<a href="anno/testGet">取出 SessionAttribute</a>
+<hr/>
+<a href="anno/testClean">清除 SessionAttribute</a>
+```
+
+```java
+@Controller
+@RequestMapping("/anno")
+@SessionAttributes(value ={"username", "password"}, types={Integer.class})
+public class SessionAttributeController {
+
+    /**
+    * 把数据存入 SessionAttribute
+    * @param model
+    * @return
+    * Model 是 spring 提供的一个接口，该接口有一个实现类 ExtendedModelMap
+    * 该类继承了 ModelMap，而 ModelMap 就是 LinkedHashMap 子类
+    */
+    @RequestMapping("/testPut")
+    public String testPut(Model model){
+        model.addAttribute("username", "parzulpan");
+        model.addAttribute("password", "123456");
+        model.addAttribute("age", 31);
+        // 跳转之前将数据保存到 username、password 和 age 中，因为注解@SessionAttribute 中有这几个参数
+        return "hello";
+    }
+
+    @RequestMapping("/testGet")
+    public String testGet(ModelMap model){
+        System.out.println(model.get("username") + "; " + model.get("password") + "; " + model.get("age"));
+        return "hello";
+    }
+
+    @RequestMapping("/testClean")
+    public String complete(SessionStatus sessionStatus){
+        sessionStatus.setComplete();
+        return "hello";
+    }
+}
+```
+
 ## 练习和总结
-
-<details>
-<summary>查看 app-servlet.xml</summary>
-
-```
-
-```
-
-</details>
