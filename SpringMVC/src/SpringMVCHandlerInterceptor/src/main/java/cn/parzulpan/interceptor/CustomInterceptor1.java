@@ -9,7 +9,7 @@ import javax.servlet.http.HttpServletResponse;
 /**
  * @Author : parzulpan
  * @Time : 2020-12
- * @Desc :
+ * @Desc : 自定义拦截器
  */
 
 public class CustomInterceptor1 implements HandlerInterceptor {
@@ -27,7 +27,7 @@ public class CustomInterceptor1 implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         System.out.println("called CustomInterceptor1 preHandle...");
 
-        request.getRequestDispatcher("/WEB_INF/views/error.jsp").forward(request, response);
+//        request.getRequestDispatcher("/WEB_INF/views/error.jsp").forward(request, response);
 
         return true;
     }
@@ -44,7 +44,7 @@ public class CustomInterceptor1 implements HandlerInterceptor {
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
         System.out.println("called CustomInterceptor1 postHandle...");
 
-        request.getRequestDispatcher("/WEB_INF/views/error.jsp").forward(request, response);
+//        request.getRequestDispatcher("/WEB_INF/views/error.jsp").forward(request, response);
     }
 
     /**
