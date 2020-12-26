@@ -12,11 +12,11 @@
     <c:forEach items="${users}" var="user">
         ID: ${user.id} <br>
         用户名：${user.username} <br>
-        密码：#{user.password} <br>
+        密  码：${user.password} <br>
     </c:forEach>
 
     <br>
-    <a href="user/returnIndex">返回起始页</a>
+    <a href="returnIndex">返回起始页</a>
 
 </body>
 </html>

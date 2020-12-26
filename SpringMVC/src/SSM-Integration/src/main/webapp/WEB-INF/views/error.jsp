@@ -7,6 +7,6 @@
     操作失败啦～<br>
 
     <br>
-    <a href="user/returnIndex">返回起始页</a>
+    <a href="returnIndex">返回起始页</a>
 </body>
 </html>

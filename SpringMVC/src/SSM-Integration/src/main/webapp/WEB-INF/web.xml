@@ -5,7 +5,7 @@
 <web-app>
   <display-name>Archetype Created Web Application</display-name>
 
-    <!-- 配置Spring的监听器 -->
+    <!-- 配置Spring的监听器 Start -->
     <listener>
         <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
     </listener>
@@ -13,8 +13,8 @@
     <context-param>
         <param-name>contextConfigLocation</param-name>
         <param-value>/WEB-INF/applicationContext.xml</param-value>
-<!--        <param-value>classpath:applicationContext.xml</param-value>-->
     </context-param>
+    <!-- 配置Spring的监听器 End -->
 
     <!-- 配置 app 分派器（前端控制器）Start -->
     <servlet>
@@ -24,7 +24,6 @@
         <init-param>
             <param-name>contextConfigLocation</param-name>
             <param-value>/WEB-INF/dispatcher-servlet.xml</param-value>
-<!--            <param-value>classpath:dispatcher-servlet.xml</param-value>-->
         </init-param>
         <!-- 配置 Servlet 对象的创建时间点为应用加载时创建，取值只能为非零整数，表示启动顺序 -->
         <load-on-startup>1</load-on-startup>

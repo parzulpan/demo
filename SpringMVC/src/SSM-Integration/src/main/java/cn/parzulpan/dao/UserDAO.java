@@ -2,6 +2,7 @@ package cn.parzulpan.dao;
 
 import cn.parzulpan.domain.User;
 import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.SelectKey;
 import org.springframework.stereotype.Repository;
@@ -29,7 +30,7 @@ public interface UserDAO {
      * @return
      */
     @Select("select * from user where id = #{id}")
-    public User findById(Integer id);
+    public User findById(@Param("id") Integer id);
 
     /**
      * 根据 用户名 查询用户信息
@@ -37,7 +38,7 @@ public interface UserDAO {
      * @return
      */
     @Select("select * from user where username = #{username}")
-    public User findByName(String username);
+    public User findByName(@Param("username") String username);
 
     /**
      * 根据用户名和密码查询用户信息
@@ -46,7 +47,7 @@ public interface UserDAO {
      * @return
      */
     @Select("select * from user where username = #{username} and password = #{password}")
-    public User findByNameAndPwd(String username, String password);
+    public User findByNameAndPwd(@Param("username") String username, @Param("password") String password);
 
     /**
      * 保存用户

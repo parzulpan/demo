@@ -7,8 +7,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.util.List;
 
 /**
@@ -29,17 +27,17 @@ public class UserController {
      * @return
      */
     @RequestMapping("/login")
-    public String login(User user, HttpServletRequest request, HttpServletResponse response) throws Exception {
+    public String login(User user){
         System.out.println("表现层：登录用户");
         System.out.println(user);
 
         User userByNameAndPwd = userService.findUserByNameAndPwd(user.getUsername(), user.getPassword());
         if (userByNameAndPwd != null) {
             System.out.println("登录成功");
-            response.sendRedirect(request.getContextPath() + "/user/findAll");
+            return "redirect:findAll";
         }
 
-         return "error";
+        return "error";
     }
 
     /**
@@ -48,18 +46,17 @@ public class UserController {
      * @return
      */
     @RequestMapping("/registration")
-    public String registration(User user, HttpServletRequest request, HttpServletResponse response) throws Exception {
+    public String registration(User user){
         System.out.println("表现层：注册用户");
         System.out.println(user);
 
         int i = userService.saveUser(user);
         if (i > 0) {
             System.out.println("注册成功");
-            response.sendRedirect(request.getContextPath() + "/user/findAll");
+            return "redirect:findAll";
         }
 
         return "error";
-
     }
 
     /**
@@ -70,6 +67,7 @@ public class UserController {
     @RequestMapping("/findAll")
     public String findAll(Model model) {
         System.out.println("表现层：查询所有账户");
+
         List<User> users = userService.findAllUser();
         model.addAttribute("users", users);
 
@@ -87,5 +85,4 @@ public class UserController {
 
         return "redirect:/index.jsp";
     }
-
 }
