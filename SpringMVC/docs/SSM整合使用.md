@@ -21,13 +21,7 @@ SSM 整合可以使用多种方式，但是选择 **XML + 注解** 的方式最�
 
 使用 IDEA 新建一个 Maven 工程，选择 `maven-archetype-webapp`
 
-* 创建 ssm_parent 父工程（打包方式选择pom，必须的）
-* 创建 ssm_web 子模块（打包方式是war包）
-* 创建 ssm_service 子模块（打包方式是jar包）
-* 创建 ssm_dao 子模块（打包方式是jar包）
-* 创建 ssm_domain 子模块（打包方式是jar包）
-* web 依赖于 service，service 依赖于 dao，dao 依赖于 domain
-* 在 ssm_parent 的 pom.xml 文件中引入坐标依赖
+* 在 项目 的 pom.xml 文件中引入坐标依赖
 
     ```xml
     <properties>
