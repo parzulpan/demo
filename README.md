@@ -72,5 +72,23 @@ project demo repository.
   * **SSM 整合使用**
     * [Docs](SpringMVC/docs/SSM整合使用.md)
     * [Src](SpringMVC/src/SSM-Integration)
-  
+* **SSM Project**
+  * **AuthMS Project**
+    * [Docs](Projects/AuthMS/docs/README.md)
+    * [Src](Projects/AuthMS/src)
+* **Maven**
+  * **Maven 高级应用**
+    * [Docs](Maven/docs/Maven高级应用.md)
+    * [Src-MavenTraditional](Maven/src/MavenTraditional)
+    * [Src-MavenModular](Maven/src/MavenModular)
+  * **Maven 私服搭建**
+    * [Docs](Maven/docs/Maven私服搭建.md)
+* **SpringBoot 1.x**
+  * SpringBoot1.x 入门
+    * [Docs](SpringBoot/1.x/docs/SpringBoot1.x入门.md)
+    * [Src](SpringBoot/1.x/src/helloworld)
+  * SpringBoot1.x 配置
+    * [Docs](SpringBoot/1.x/docs/SpringBoot1.x配置.md)
+    * [Src](pringBoot/1.x/src/config)
+
 ## 说明
