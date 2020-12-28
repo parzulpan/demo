@@ -13,11 +13,10 @@ import java.util.Map;
  * @Author : parzulpan
  * @Time : 2020-12
  * @Desc : 人实体类
- *
+ * <p>
  * 将配置文件中配置的每一个属性的值，映射到这个组件中
  * @ConfigurationProperties： 告诉 SpringBoot 将本类中的所有属性和配置文件中相关的配置进行绑定
  * prefix = "person" 配置文件中哪个下面的所有属性进行一一映射
- *
  */
 
 @Component
@@ -27,7 +26,7 @@ public class Person {
     private String name;
     private Integer age;
     private Boolean boss;
-//    @Email
+    //    @Email
     private Date date;
 
     private Map<String, Object> maps;
