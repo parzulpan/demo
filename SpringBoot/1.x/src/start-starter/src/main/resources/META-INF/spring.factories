@@ -1,0 +1,5 @@
+org.springframework.context.ApplicationContextInitializer=\
+cn.parzulpan.listener.HelloApplicationContextInitializer
+
+org.springframework.boot.SpringApplicationRunListener=\
+cn.parzulpan.listener.HelloSpringApplicationRunListener

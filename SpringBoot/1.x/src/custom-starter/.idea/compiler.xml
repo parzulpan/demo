@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="parzulpan-spring-boot-starter-autoconfigurer" />
+        <module name="parzulpan-spring-boot-starter" />
+        <module name="parzulpan-starter-test" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="parzulpan-spring-boot-starter" target="1.5" />
+      <module name="parzulpan-spring-boot-starter-autoconfigurer" target="1.8" />
+      <module name="parzulpan-spring-boot-starter-configurer" target="1.8" />
+      <module name="parzulpan-starter-test" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="parzulpan-spring-boot-starter-autoconfigurer" options="" />
+      <module name="parzulpan-spring-boot-starter-configurer" options="" />
+      <module name="parzulpan-starter-test" options="" />
+    </option>
+  </component>
+</project>
