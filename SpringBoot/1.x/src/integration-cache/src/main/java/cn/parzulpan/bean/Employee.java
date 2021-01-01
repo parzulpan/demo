@@ -1,6 +1,6 @@
 package cn.parzulpan.bean;
 
-import java.util.Date;
+import java.io.Serializable;
 
 /**
  * @Author : parzulpan
@@ -8,7 +8,7 @@ import java.util.Date;
  * @Desc :
  */
 
-public class Employee {
+public class Employee implements Serializable {
     private Integer id;
     private String lastName;
     private String email;

@@ -1,12 +1,14 @@
 package cn.parzulpan.bean;
 
+import java.io.Serializable;
+
 /**
  * @Author : parzulpan
  * @Time : 2020-12
  * @Desc :
  */
 
-public class Department {
+public class Department implements Serializable {
     private Integer id;
     private String departmentName;
 

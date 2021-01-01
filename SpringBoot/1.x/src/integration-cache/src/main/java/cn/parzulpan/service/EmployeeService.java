@@ -11,10 +11,10 @@ import java.util.List;
 /**
  * @Author : parzulpan
  * @Time : 2020-12
- * @Desc :
+ * @Desc : 员工业务层
  */
 
-@CacheConfig(cacheNames = {"emp"})    // 指定这个类的缓存配置，通常用于抽取公共配置
+@CacheConfig(cacheNames = {"emp"}, cacheManager = "employeeCacheManager")    // 指定这个类的缓存配置，通常用于抽取公共配置
 @Service
 public class EmployeeService {
 
@@ -22,57 +22,61 @@ public class EmployeeService {
     EmployeeMapper employeeMapper;
 
     /**
-     * @Cacheable 能够根据方法的请求参数对其结果进行缓存
-     * 参数：
-     *   cacheNames/value: 缓存的名字
-     *   key: 缓存的数据，为空时默认是使用方法参数的值，可以为 SpEL 表达式，例如 #id
-     *   keyGenerator: key 的生成器，可以自己指定 key 的生成器的组件 id，它与 key 二选一
-     *   cacheManager: 缓存管理器
-     *   cacheResolver: 缓存解析器，它与 cacheManager 二选一
-     *   condition: 执行符合条件才缓存
-     *   unless:  执行不符合条件才缓存
-     *   sync: 是否使用异步模式
      *
-     * 原理：
-     *   自动配置类 CacheAutoConfiguration
-     *   缓存配置类
+     * 根据 Id 查询员工信息
+     *
+     * @Cacheable 运行流程：
+     * 1. 方法运行之前，先去查询 Cache 缓存组件，按照 cacheNames 指定的名字获取，第一次获取缓存时如果没有 Cache 组件会自动创建
+     * 2. 去 Cache 中查询缓存的内容，使用一个 key，默认是方法的参数。也可以按照某种策略生成，默认使用 SimpleKeyGenerator 生成 key
+     *    SimpleKeyGenerator 生成 key 的默认策略为：
+     *      如果没有参数，key = new SimpleKey()
+     *      如果有一个参数，key = 参数的值
+     *      如果有多个参数，key = new SimpleKey(params)
+     * 3. 有查询到缓存，则直接使用缓存；没有查询到缓存，则调用目标方法并将目标方法返回的结果放进缓存中
      */
-    @Cacheable(cacheNames = {"emp"})
+    @Cacheable(/*cacheNames = {"emp"}*/)
     public Employee getEmp(Integer id) {
         return employeeMapper.getEmpById(id);
     }
 
     /**
-     * @CachePut 即调用方法，又更新缓存数据
+     *
+     * 更新员工信息
+     *
+     * @CachePut 运行流程
+     * 1. 先调用目标方法
+     * 2. 将目标方法的结果缓存起来
+     * 3. 比较适用与修改了数据库某个数据后，更新缓存
      */
-    @CachePut(value = {"emp"})
+    @CachePut(/*value = {"emp"}, key = "#result.id", */keyGenerator = "customKeyGenerator")
     public Employee updateEmp(Employee employee) {
         employeeMapper.updateEmp(employee);
         return  employee;
     }
 
     /**
-     * @CacheEvict 缓存清除
-     * 参数：
-     *   key: 指定要清除的数据
-     *   allEntries: 指定清除这个缓存中的所有数据
-     *   beforeInvocation: 缓存的清除是否在方法之前执行，默认是缓存清除操作是在方法之后执行，出现异常不会清除缓存
+     *
+     * 删除员工信息
+     *
      */
-    @CacheEvict(value = {"emp"})
+    @CacheEvict(/*value = {"emp"}, */key = "#id")
     public void deleteEmp(Integer id) {
         employeeMapper.deleteEmpById(id);
     }
 
     /**
+     *
+     * 根据 lastName 查询员工信息
+     *
      * @Caching 定义复杂的缓存规则
      */
     @Caching(
             cacheable = {
-                    @Cacheable(value = {"emp"}, key = "#lastName")
+                    @Cacheable(/*value = {"emp"}, */key = "#lastName")
             },
             put = {
-                    @CachePut(value = {"emp"}, key = "#result.id"),
-                    @CachePut(value = {"emp"}, key = "#result.email")
+                    @CachePut(/*value = {"emp"}, */key = "#result.id"),
+                    @CachePut(/*value = {"emp"}, */key = "#result.email")
             }
     )
     public Employee getEmp(String lastName) {
