@@ -107,7 +107,7 @@ Kafka 消息队列：负责日志数据的接收，存储和转发。
 
 ![聊天室通讯引入消息队列](https://images.cnblogs.com/cnblogs_com/parzulpan/1907498/o_210102072934%E8%81%8A%E5%A4%A9%E5%AE%A4%E9%80%9A%E8%AE%AF%E5%BC%95%E5%85%A5%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97.png)
 
-## RabbitMQ
+## 整合 RabbitMQ
 
 **Spring 支持**：
 
