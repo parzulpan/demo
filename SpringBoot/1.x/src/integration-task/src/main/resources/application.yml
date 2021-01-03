@@ -1,0 +1,8 @@
+spring:
+  mail:
+    username: 1129768687@qq.com
+    password: wiacrbulowhhgagh # 使用授权码
+    host: smtp.qq.com
+#    properties:
+#      mail.smtp.ssl.enable: true  # 开启 smtp 服务器
+
