@@ -401,11 +401,11 @@ type 显示的是访问类型，是**很重要的一个指标，**结果值从�
 
 ### ref
 
-
+表之间的引用关系，那些列或者常量被用于查找索引列上的值。最好的情况是一个常数。
 
 ### rows
 
-
+根据表统计信息以及索引选用情况，大致算出每张表被优化器查询的行数。
 
 ### filtered
 
@@ -413,9 +413,31 @@ type 显示的是访问类型，是**很重要的一个指标，**结果值从�
 
 ### Extra
 
+包含不适合在其他列中显示但十分重要的额外信息。主要有：
 
-
-
+1. Using filesort：
+   1. MySQL 中无法利用索引完成的排序称为“**文件排序**”；
+   2. 说明 MySQL 会对数据使用一个外部的索引排序，而不是按照表内的索引顺序，这是**比较坏的情况**，**需要尽快优化 SQL**。
+2. Using temporary：
+   1. MySQL 在对查询结果排序时使用了“**临时表**”；
+   2. 常见于排序 order by 和 分组查询 group by，这是**超级坏的情况**，**需要立即优化 SQL**。
+3. Using index：
+   1. MySQL 进行 select 操作中使用“**覆盖索引（Conveing index）**”；
+   2. 避免了访问表的数据行，这是**比较好的情况**。如果同时出现 Using where 的情况，则索引被用来执行索引键值的查找。如果没有出现 Using where 的情况，则索引被用来读取数据而非执行查找动作。
+   3. **怎么理解覆盖索引？**
+      1. 可以理解为 **select 的数据列只用从索引中就能获得，而不必读取数据行**，即查询列要被所建的索引覆盖。
+      2. 也可以理解为 **一个索引包含/覆盖了满足查询结果的数据**就叫做覆盖索引。
+      3. 值得注意的是，**如果要使用覆盖索引，一定要注意select列表中只取出需要的列，不可`select *`** 。
+4. Using where：
+   1. MySQL 使用了 where 条件过滤。
+5. Using join buffer：
+   1. MySQL 使用了 连接缓存。
+6. impossible where：
+   1. 说明 where 子句的值总是 false，不能用来获取到任何数据。
+7. select tables optimized away：
+   1. 在没有 group by 子句的情况下，基于索引优化 MIN/MAX 操作或者对于 MyISAM 存储引擎优化`count(*)`操作，不必等到执行阶段再进行计算，查询执行计划生成的阶段即完成优化。
+8. distinct：
+   1. 对于 distinct，MySQL 在找到第一个匹配的原则后立即停止找同样值的工作。
 
 ## 索引优化
 
@@ -434,19 +456,514 @@ type 显示的是访问类型，是**很重要的一个指标，**结果值从�
 * WHERE 子句中的查询条件使用了 NULL 判断，例如 `where age not is null`
 * 在连接操作中，主键和外键的数据类型不相同
 
-
-
 ### 单表索引优化
 
+#### 建表测试
 
+```sql
+# create database MySQLTest;
+
+use MySQLTest;
+
+drop table if exists article;
+CREATE TABLE IF NOT EXISTS article(
+                                      id INT(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+                                      author_id INT(10) UNSIGNED NOT NULL,
+                                      category_id INT(10) UNSIGNED NOT NULL,
+                                      views INT(10) UNSIGNED NOT NULL,
+                                      comments INT(10) UNSIGNED NOT NULL,
+                                      title VARCHAR(255) NOT NULL,
+                                      content TEXT NOT NULL
+);
+
+INSERT INTO article(author_id,category_id,views,comments,title,content)
+VALUES
+(1,1,1,1,'1','1'),
+(2,2,2,2,'2','2'),
+(1,1,3,3,'3','3');
+```
+
+#### 查询案例
+
+* 查询 category_id 为 1 且 comments 大于 1 的情况下，views 最多的 article_id：
+
+  ```sql
+  mysql> select id, author_id from article where category_id = 1 and comments > 1 order by views desc limit 1;
+  +----+-----------+
+  | id | author_id |
+  +----+-----------+
+  |  3 |         1 |
+  +----+-----------+
+  1 row in set (0.00 sec)
+  ```
+
+* 查看表索引情况：
+
+  ```sql
+  mysql> show index from article;
+  +---------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | Table   | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
+  +---------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | article |          0 | PRIMARY  |            1 | id          | A         |           3 |     NULL | NULL   |      | BTREE      |         |               |
+  +---------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  1 row in set (0.00 sec)
+  ```
+
+* 使用 explain 分析 SQL 语句的执行效率
+
+  ```sql
+  mysql> explain select id, author_id from article where category_id = 1 and comments > 1 order by views desc limit 1;
+  +----+-------------+---------+------------+------+---------------+------+---------+------+------+----------+-----------------------------+
+  | id | select_type | table   | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra                       |
+  +----+-------------+---------+------------+------+---------------+------+---------+------+------+----------+-----------------------------+
+  |  1 | SIMPLE      | article | NULL       | ALL  | NULL          | NULL | NULL    | NULL |    3 |    33.33 | Using where; Using filesort |
+  +----+-------------+---------+------------+------+---------------+------+---------+------+------+----------+-----------------------------+
+  1 row in set, 1 warning (0.00 sec)
+  ```
+
+* 可以看到 type 是 All，这是**最坏的情况**；
+
+* 而且 extra 出现了 Using filesort，这也是**比较坏的情况**。
+
+#### 优化流程
+
+##### 新建索引
+
+* 在 category_id 、comments、views 列上建立联合索引：
+
+  ```sql
+  mysql> create index idx_article_ccv on article(category_id, comments, views);
+  Query OK, 0 rows affected (0.02 sec)
+  Records: 0  Duplicates: 0  Warnings: 0
+  
+  mysql> show index from article;
+  +---------+------------+-----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | Table   | Non_unique | Key_name        | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
+  +---------+------------+-----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | article |          0 | PRIMARY         |            1 | id          | A         |           3 |     NULL | NULL   |      | BTREE      |         |               |
+  | article |          1 | idx_article_ccv |            1 | category_id | A         |           2 |     NULL | NULL   |      | BTREE      |         |               |
+  | article |          1 | idx_article_ccv |            2 | comments    | A         |           3 |     NULL | NULL   |      | BTREE      |         |               |
+  | article |          1 | idx_article_ccv |            3 | views       | A         |           3 |     NULL | NULL   |      | BTREE      |         |               |
+  +---------+------------+-----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  4 rows in set (0.00 sec)
+  ```
+
+* 再次使用 explain 分析 SQL 语句的执行效率：
+
+  ```sql
+  mysql> explain select id, author_id from article where category_id = 1 and comments > 1 order by views desc limit 1;
+  +----+-------------+---------+------------+-------+-----------------+-----------------+---------+------+------+----------+---------------------------------------+
+  | id | select_type | table   | partitions | type  | possible_keys   | key             | key_len | ref  | rows | filtered | Extra                                 |
+  +----+-------------+---------+------------+-------+-----------------+-----------------+---------+------+------+----------+---------------------------------------+
+  |  1 | SIMPLE      | article | NULL       | range | idx_article_ccv | idx_article_ccv | 8       | NULL |    1 |   100.00 | Using index condition; Using filesort |
+  +----+-------------+---------+------------+-------+-----------------+-----------------+---------+------+------+----------+---------------------------------------+
+  1 row in set, 1 warning (0.00 sec)
+  ```
+
+* 可以看到，type 现在是 range，这是可以接受的。但是为什么 extra 还是 Using filesort 呢？
+
+* 这是因为，根据 B树索引的工作原理，会先排序 category_id，如果遇到相同的 category_id 再排序 comments，如果遇到相同的 comments 再排序 views。而 comments > 1 处于联合索引的中间位置，根据 最左匹配原则，此时索引会失效，即 views 部分是无法使用索引的。
+
+##### 删除索引
+
+* 知道了问题的所在，可以先删除索引：
+
+  ```sql
+  mysql> drop index idx_article_ccv on article;
+  Query OK, 0 rows affected (0.00 sec)
+  Records: 0  Duplicates: 0  Warnings: 0
+  
+  mysql> show index from article;
+  +---------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | Table   | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
+  +---------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | article |          0 | PRIMARY  |            1 | id          | A         |           3 |     NULL | NULL   |      | BTREE      |         |               |
+  +---------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  1 row in set (0.00 sec)
+  ```
+
+##### 再建索引
+
+* 不为 comments 列建立索引：
+
+  ```sql
+  mysql> create index idx_article_cv on article(category_id, views);
+  Query OK, 0 rows affected (0.01 sec)
+  Records: 0  Duplicates: 0  Warnings: 0
+  mysql> show index from article;
+  +---------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | Table   | Non_unique | Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
+  +---------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | article |          0 | PRIMARY        |            1 | id          | A         |           3 |     NULL | NULL   |      | BTREE      |         |               |
+  | article |          1 | idx_article_cv |            1 | category_id | A         |           2 |     NULL | NULL   |      | BTREE      |         |               |
+  | article |          1 | idx_article_cv |            2 | views       | A         |           3 |     NULL | NULL   |      | BTREE      |         |               |
+  +---------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  3 rows in set (0.00 sec)
+  ```
+
+* 再次使用 explain 分析 SQL 语句的执行效率：
+
+  ```sql
+  mysql> explain select id, author_id from article where category_id = 1 and comments > 1 order by views desc limit 1;
+  +----+-------------+---------+------------+------+----------------+----------------+---------+-------+------+----------+-------------+
+  | id | select_type | table   | partitions | type | possible_keys  | key            | key_len | ref   | rows | filtered | Extra       |
+  +----+-------------+---------+------------+------+----------------+----------------+---------+-------+------+----------+-------------+
+  |  1 | SIMPLE      | article | NULL       | ref  | idx_article_cv | idx_article_cv | 4       | const |    2 |    33.33 | Using where |
+  +----+-------------+---------+------------+------+----------------+----------------+---------+-------+------+----------+-------------+
+  1 row in set, 1 warning (0.00 sec)
+  ```
+
+* 可以看到，效果非常的理想。为了不影响后面的使用，这是还是删除该表的 `idx_aarticle_cv` 索引。
 
 ### 双表索引优化
 
+#### 建表测试
 
+```sql
+# create database MySQLTest;
+
+use MySQLTest;
+
+drop table if exists class;
+CREATE TABLE IF NOT EXISTS class(
+                                    id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+                                    card INT(10) UNSIGNED NOT NULL,
+                                    PRIMARY KEY(id)
+);
+
+drop table if exists book;
+CREATE TABLE IF NOT EXISTS book(
+                                   bookid INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+                                   card INT(10) UNSIGNED NOT NULL,
+                                   PRIMARY KEY(bookid)
+);
+
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1+(RAND()*20)));
+
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO book(card) VALUES(FLOOR(1+(RAND()*20)));
+```
+
+#### 查询案例
+
+* 两表左连接查询：
+
+  ```sql
+  mysql> select * from class left join book on class.card = book.card;
+  +----+------+--------+------+
+  | id | card | bookid | card |
+  +----+------+--------+------+
+  |  1 |    1 |      1 |    1 |
+  |  1 |    1 |      2 |    1 |
+  |  7 |   20 |      3 |   20 |
+  | 16 |   20 |      3 |   20 |
+  | 20 |   20 |      3 |   20 |
+  |  1 |    1 |      8 |    1 |
+  |  4 |    8 |      9 |    8 |
+  | 21 |    8 |      9 |    8 |
+  |  7 |   20 |     11 |   20 |
+  | 16 |   20 |     11 |   20 |
+  | 20 |   20 |     11 |   20 |
+  |  4 |    8 |     12 |    8 |
+  | 21 |    8 |     12 |    8 |
+  |  7 |   20 |     13 |   20 |
+  | 16 |   20 |     13 |   20 |
+  | 20 |   20 |     13 |   20 |
+  |  6 |    4 |     16 |    4 |
+  | 19 |    4 |     16 |    4 |
+  |  8 |   10 |     18 |   10 |
+  |  7 |   20 |     19 |   20 |
+  | 16 |   20 |     19 |   20 |
+  | 20 |   20 |     19 |   20 |
+  |  2 |    3 |   NULL | NULL |
+  |  3 |   12 |   NULL | NULL |
+  |  5 |    6 |   NULL | NULL |
+  |  9 |    7 |   NULL | NULL |
+  | 10 |    6 |   NULL | NULL |
+  | 11 |    7 |   NULL | NULL |
+  | 12 |   19 |   NULL | NULL |
+  | 13 |   12 |   NULL | NULL |
+  | 14 |    3 |   NULL | NULL |
+  | 15 |   18 |   NULL | NULL |
+  | 17 |    7 |   NULL | NULL |
+  | 18 |   13 |   NULL | NULL |
+  +----+------+--------+------+
+  34 rows in set (0.00 sec)
+  ```
+
+* 使用 explain 分析 SQL 语句的执行效率：
+
+  ```sql
+  mysql> explain select * from class left join book on class.card = book.card;
+  +----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+----------------------------------------------------+
+  | id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra                                              |
+  +----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+----------------------------------------------------+
+  |  1 | SIMPLE      | class | NULL       | ALL  | NULL          | NULL | NULL    | NULL |   21 |   100.00 | NULL                                               |
+  |  1 | SIMPLE      | book  | NULL       | ALL  | NULL          | NULL | NULL    | NULL |   20 |   100.00 | Using where; Using join buffer (Block Nested Loop) |
+  +----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+----------------------------------------------------+
+  2 rows in set, 1 warning (0.00 sec)
+  ```
+
+* 可以看到 type 是 All，这是**最坏的情况**；
+
+* 而且 rows 为表中数据的总行数，说明 class 和 book 进行了全表检索。
+
+#### 优化流程
+
+##### 添加索引
+
+* 在 book 的 card 字段上添加索引：
+
+  ````sql
+  mysql> alter table book add index idx_book(card);
+  Query OK, 0 rows affected (0.01 sec)
+  Records: 0  Duplicates: 0  Warnings: 0
+  
+  mysql> show index from book;
+  +-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
+  +-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | book  |          0 | PRIMARY  |            1 | bookid      | A         |          20 |     NULL | NULL   |      | BTREE      |         |               |
+  | book  |          1 | idx_book |            1 | card        | A         |          11 |     NULL | NULL   |      | BTREE      |         |               |
+  +-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  2 rows in set (0.00 sec)
+  ````
+
+* 再次使用 explain 分析 SQL 语句的执行效率：
+
+  ```sql
+  mysql> explain select * from class left join book on class.card = book.card;
+  +----+-------------+-------+------------+------+---------------+----------+---------+----------------------+------+----------+-------------+
+  | id | select_type | table | partitions | type | possible_keys | key      | key_len | ref                  | rows | filtered | Extra       |
+  +----+-------------+-------+------------+------+---------------+----------+---------+----------------------+------+----------+-------------+
+  |  1 | SIMPLE      | class | NULL       | ALL  | NULL          | NULL     | NULL    | NULL                 |   21 |   100.00 | NULL        |
+  |  1 | SIMPLE      | book  | NULL       | ref  | idx_book      | idx_book | 4       | MySQLTest.class.card |    1 |   100.00 | Using index |
+  +----+-------------+-------+------------+------+---------------+----------+---------+----------------------+------+----------+-------------+
+  2 rows in set, 1 warning (0.00 sec)
+  ```
+
+* 可以看到 book 表的 type 是 ref，这是可以接受的；
+
+* 而且 book 表的  rows 为 1，说明没有进行全表检索；
+
+* **总结**：左连接，是拿着左表的数据去右表里面查，所以索引需要在右表中建立。右连接同理。
+
+* 效果非常的理想。为了不影响后面的使用，这是还是删除该表的 `idx_book` 索引。
 
 ### 三表索引优化
 
+#### 建表测试
 
+```sql
+# create database MySQLTest;
+
+use MySQLTest;
+
+drop table if exists phone;
+CREATE TABLE IF NOT EXISTS phone(
+                                    phoneid INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+                                    card INT(10) UNSIGNED NOT NULL,
+                                    PRIMARY KEY(phoneid)
+)ENGINE=INNODB;
+
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+INSERT INTO phone(card) VALUES(FLOOR(1+(RAND()*20)));
+```
+
+#### 查询案例
+
+* 三表左连接查询：
+
+  ```sql
+  mysql> select * from class left join book on class.card = book.card left join phone on book.card = phone.card;
+  +----+------+--------+------+---------+------+
+  | id | card | bookid | card | phoneid | card |
+  +----+------+--------+------+---------+------+
+  |  8 |   10 |     18 |   10 |       2 |   10 |
+  |  6 |    4 |     16 |    4 |       8 |    4 |
+  | 19 |    4 |     16 |    4 |       8 |    4 |
+  |  7 |   20 |      3 |   20 |       9 |   20 |
+  | 16 |   20 |      3 |   20 |       9 |   20 |
+  | 20 |   20 |      3 |   20 |       9 |   20 |
+  |  7 |   20 |     11 |   20 |       9 |   20 |
+  | 16 |   20 |     11 |   20 |       9 |   20 |
+  | 20 |   20 |     11 |   20 |       9 |   20 |
+  |  7 |   20 |     13 |   20 |       9 |   20 |
+  | 16 |   20 |     13 |   20 |       9 |   20 |
+  | 20 |   20 |     13 |   20 |       9 |   20 |
+  |  7 |   20 |     19 |   20 |       9 |   20 |
+  | 16 |   20 |     19 |   20 |       9 |   20 |
+  | 20 |   20 |     19 |   20 |       9 |   20 |
+  |  4 |    8 |      9 |    8 |      10 |    8 |
+  | 21 |    8 |      9 |    8 |      10 |    8 |
+  |  4 |    8 |     12 |    8 |      10 |    8 |
+  | 21 |    8 |     12 |    8 |      10 |    8 |
+  |  7 |   20 |      3 |   20 |      11 |   20 |
+  | 16 |   20 |      3 |   20 |      11 |   20 |
+  | 20 |   20 |      3 |   20 |      11 |   20 |
+  |  7 |   20 |     11 |   20 |      11 |   20 |
+  | 16 |   20 |     11 |   20 |      11 |   20 |
+  | 20 |   20 |     11 |   20 |      11 |   20 |
+  |  7 |   20 |     13 |   20 |      11 |   20 |
+  | 16 |   20 |     13 |   20 |      11 |   20 |
+  | 20 |   20 |     13 |   20 |      11 |   20 |
+  |  7 |   20 |     19 |   20 |      11 |   20 |
+  | 16 |   20 |     19 |   20 |      11 |   20 |
+  | 20 |   20 |     19 |   20 |      11 |   20 |
+  |  6 |    4 |     16 |    4 |      14 |    4 |
+  | 19 |    4 |     16 |    4 |      14 |    4 |
+  |  6 |    4 |     16 |    4 |      17 |    4 |
+  | 19 |    4 |     16 |    4 |      17 |    4 |
+  |  1 |    1 |      1 |    1 |    NULL | NULL |
+  |  1 |    1 |      2 |    1 |    NULL | NULL |
+  |  1 |    1 |      8 |    1 |    NULL | NULL |
+  |  2 |    3 |   NULL | NULL |    NULL | NULL |
+  |  3 |   12 |   NULL | NULL |    NULL | NULL |
+  |  5 |    6 |   NULL | NULL |    NULL | NULL |
+  |  9 |    7 |   NULL | NULL |    NULL | NULL |
+  | 10 |    6 |   NULL | NULL |    NULL | NULL |
+  | 11 |    7 |   NULL | NULL |    NULL | NULL |
+  | 12 |   19 |   NULL | NULL |    NULL | NULL |
+  | 13 |   12 |   NULL | NULL |    NULL | NULL |
+  | 14 |    3 |   NULL | NULL |    NULL | NULL |
+  | 15 |   18 |   NULL | NULL |    NULL | NULL |
+  | 17 |    7 |   NULL | NULL |    NULL | NULL |
+  | 18 |   13 |   NULL | NULL |    NULL | NULL |
+  +----+------+--------+------+---------+------+
+  50 rows in set (0.00 sec)
+  ```
+
+* 使用 explain 分析 SQL 语句的执行效率：
+
+  ```sql
+  mysql> explain select * from class left join book on class.card = book.card left join phone on book.card = phone.card;
+  +----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+----------------------------------------------------+
+  | id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra                                              |
+  +----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+----------------------------------------------------+
+  |  1 | SIMPLE      | class | NULL       | ALL  | NULL          | NULL | NULL    | NULL |   21 |   100.00 | NULL                                               |
+  |  1 | SIMPLE      | book  | NULL       | ALL  | NULL          | NULL | NULL    | NULL |   20 |   100.00 | Using where; Using join buffer (Block Nested Loop) |
+  |  1 | SIMPLE      | phone | NULL       | ALL  | NULL          | NULL | NULL    | NULL |   20 |   100.00 | Using where; Using join buffer (Block Nested Loop) |
+  +----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+----------------------------------------------------+
+  3 rows in set, 1 warning (0.00 sec)
+  ```
+
+* 可以看到 type 是 All，这是**最坏的情况**；
+
+* 而且 rows 为表中数据的总行数，说明 class 和 book 和 phone 进行了全表检索；
+
+* Extra 中 是 Using join buffer (Block Nested Loop)，说明在连接过程中使用了 join 缓冲区。
+
+#### 优化流程
+
+##### 添加索引
+
+* 在 book 和 phone 的 card 字段上添加索引：
+
+  ```sql
+  mysql> alter table book add index idx_book_card(card);
+  Query OK, 0 rows affected (0.00 sec)
+  Records: 0  Duplicates: 0  Warnings: 0
+  
+  mysql> show index from book;
+  +-------+------------+---------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | Table | Non_unique | Key_name      | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
+  +-------+------------+---------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | book  |          0 | PRIMARY       |            1 | bookid      | A         |          20 |     NULL | NULL   |      | BTREE      |         |               |
+  | book  |          1 | idx_book_card |            1 | card        | A         |          11 |     NULL | NULL   |      | BTREE      |         |               |
+  +-------+------------+---------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  2 rows in set (0.00 sec)
+  
+  mysql> alter table phone add index idx_phone_card(card);
+  Query OK, 0 rows affected (0.01 sec)
+  Records: 0  Duplicates: 0  Warnings: 0
+  
+  mysql> show index from phone;
+  +-------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | Table | Non_unique | Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
+  +-------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  | phone |          0 | PRIMARY        |            1 | phoneid     | A         |          20 |     NULL | NULL   |      | BTREE      |         |               |
+  | phone |          1 | idx_phone_card |            1 | card        | A         |          14 |     NULL | NULL   |      | BTREE      |         |               |
+  +-------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+  2 rows in set (0.00 sec)
+  ```
+
+* 使用 explain 分析 SQL 语句的执行效率：
+
+  ```sql
+  mysql> explain select * from class left join book on class.card = book.card left join phone on book.card = phone.card;
+  +----+-------------+-------+------------+------+----------------+----------------+---------+----------------------+------+----------+-------------+
+  | id | select_type | table | partitions | type | possible_keys  | key            | key_len | ref                  | rows | filtered | Extra       |
+  +----+-------------+-------+------------+------+----------------+----------------+---------+----------------------+------+----------+-------------+
+  |  1 | SIMPLE      | class | NULL       | ALL  | NULL           | NULL           | NULL    | NULL                 |   21 |   100.00 | NULL        |
+  |  1 | SIMPLE      | book  | NULL       | ref  | idx_book_card  | idx_book_card  | 4       | MySQLTest.class.card |    1 |   100.00 | Using index |
+  |  1 | SIMPLE      | phone | NULL       | ref  | idx_phone_card | idx_phone_card | 4       | MySQLTest.book.card  |    1 |   100.00 | Using index |
+  +----+-------------+-------+------------+------+----------------+----------------+---------+----------------------+------+----------+-------------+
+  3 rows in set, 1 warning (0.00 sec)
+  ```
+
+* 可以看到 book、phone 表的 type 是 ref，这是可以接受的；
+
+* 而且 book、phone 表的  rows 为 1，说明没有进行全表检索；
+
+* **总结**：**永远用小结果集驱动大的结果集（在大结果集中建立索引，在小结果集中遍历全表）**；
+
+* 效果非常的理想。为了不影响后面的使用，这是还是相关索引。
 
 ## 总结和练习
 
