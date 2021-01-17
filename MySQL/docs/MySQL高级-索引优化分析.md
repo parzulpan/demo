@@ -7,7 +7,7 @@
 * 查询语句写的不好
 * 索引失效
   * 单值索引：在 user 表中给 name 属性建索引 `create index idx_user_name on user(name);`
-  * 复合索引：在 user 表中给 name、email 属性索引 
+  * 复合索引：在 user 表中给 name、email 属性索引 `create index idx_user_name_email on user(name, email);`
 * 由于设计缺陷或业务需求，导致关联查询太多表连接
 * 配置文件参数设置以及调优影响
 
