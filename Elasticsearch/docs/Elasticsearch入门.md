@@ -813,7 +813,7 @@ ES 支持两种基本方式检索：
 * 通过 REST request body，即 **uri + 请求体**
 
   ```shell
-  GET bank/_search
+  GET http://192.168.56.56:9200/bank/_search
   {
     "query": { "match_all": {} },
     "sort": [
@@ -893,7 +893,1082 @@ ES 支持两种基本方式检索：
 
 ### Query DSL 
 
-DSL（Domain specific language，领域特定语言 ）
+ES 提供了一个可以执行查询的 json 风格 的 DSL（Domain specific language，领域特定语言 ），被称为  Query DSL。
+
+#### 基本语法格式
+
+一个查询语句的典型结构：
+
+```shell
+# 如果针对于某个字段，那么它的结构为：
+{
+  QUERY_NAME:{   # 使用的功能
+     FIELD_NAME:{  #  功能参数
+       ARGUMENT:VALUE,
+       ARGUMENT:VALUE,...
+      }   
+   }
+}
+```
+
+查询示例：
+
+* `query` 定义如何查询，`match_all` 代表查询所有的索引
+* `from` 代表从第几条文档开始查询，`size` 代表查询文档个数，通常组合起来完成分页功能
+* `sort` 代表排序，多字段排序时，会在前序字段相等时后续字段内部排序，否则以前序为准
+
+```shell
+GET http://192.168.56.56:9200/bank/_search
+{
+  "query": {  #  查询的字段
+    "match_all": {}
+  },
+  "from": 0,  # 从第几条文档开始查
+  "size": 5,
+  "_source":["balance", "firstname"], # 要返回的字段
+  "sort": [
+    {
+      "account_number": {  # 返回结果按哪个列排序
+        "order": "desc"  # 降序
+      }
+    }
+  ]
+}
+
+# 返回
+{
+    "took": 4,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 1000,
+            "relation": "eq"
+        },
+        "max_score": null,
+        "hits": [
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "999",
+                "_score": null,
+                "_source": {
+                    "firstname": "Dorothy",
+                    "balance": 6087
+                },
+                "sort": [
+                    999
+                ]
+            },
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "998",
+                "_score": null,
+                "_source": {
+                    "firstname": "Letha",
+                    "balance": 16869
+                },
+                "sort": [
+                    998
+                ]
+            },
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "997",
+                "_score": null,
+                "_source": {
+                    "firstname": "Combs",
+                    "balance": 25311
+                },
+                "sort": [
+                    997
+                ]
+            },
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "996",
+                "_score": null,
+                "_source": {
+                    "firstname": "Andrews",
+                    "balance": 17541
+                },
+                "sort": [
+                    996
+                ]
+            },
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "995",
+                "_score": null,
+                "_source": {
+                    "firstname": "Phelps",
+                    "balance": 21153
+                },
+                "sort": [
+                    995
+                ]
+            }
+        ]
+    }
+}
+```
+
+#### query/match 匹配查询
+
+如果是非字符串，会进行精确匹配。如果是字符串，会进行全文检索。
+
+1. 非字符串（基本类型），精确匹配
+
+   ```shell
+   GET http://192.168.56.56:9200/bank/_search
+   {
+     "query": {
+       "match": {
+         "account_number": "20"
+       }
+     }
+   }
+   
+   # 返回
+   {
+       "took": 10,
+       "timed_out": false,
+       "_shards": {
+           "total": 1,
+           "successful": 1,
+           "skipped": 0,
+           "failed": 0
+       },
+       "hits": {
+           "total": {
+               "value": 1, # 得到一条记录
+               "relation": "eq"
+           },
+           "max_score": 1.0, # 最大得分
+           "hits": [
+               {
+                   "_index": "bank",
+                   "_type": "account",
+                   "_id": "20",
+                   "_score": 1.0,
+                   "_source": { # 文档信息
+                       "account_number": 20,
+                       "balance": 16418,
+                       "firstname": "Elinor",
+                       "lastname": "Ratliff",
+                       "age": 36,
+                       "gender": "M",
+                       "address": "282 Kings Place",
+                       "employer": "Scentric",
+                       "email": "elinorratliff@scentric.com",
+                       "city": "Ribera",
+                       "state": "WA"
+                   }
+               }
+           ]
+       }
+   }
+   ```
+
+2. 字符串，全文检索，最终会按照评分进行排序，会对检索条件进行分词匹配。这是因为维护了一个倒排索引表。
+
+   ```shell
+   GET http://192.168.56.56:9200/bank/_search
+   {
+     "query": {
+       "match": {
+         "address": "kings"
+       }
+     }
+   }
+   
+   # 返回
+   {
+       "took": 3,
+       "timed_out": false,
+       "_shards": {
+           "total": 1,
+           "successful": 1,
+           "skipped": 0,
+           "failed": 0
+       },
+       "hits": {
+           "total": {
+               "value": 2, # 得到两条记录
+               "relation": "eq"
+           },
+           "max_score": 5.990829, # 最大得分
+           "hits": [
+               {
+                   "_index": "bank",
+                   "_type": "account",
+                   "_id": "20",
+                   "_score": 5.990829, # 得分
+                   "_source": { # 文档信息
+                       "account_number": 20,
+                       "balance": 16418,
+                       "firstname": "Elinor",
+                       "lastname": "Ratliff",
+                       "age": 36,
+                       "gender": "M",
+                       "address": "282 Kings Place",
+                       "employer": "Scentric",
+                       "email": "elinorratliff@scentric.com",
+                       "city": "Ribera",
+                       "state": "WA"
+                   }
+               },
+               {
+                   "_index": "bank",
+                   "_type": "account",
+                   "_id": "722",
+                   "_score": 5.990829,
+                   "_source": {
+                       "account_number": 722,
+                       "balance": 27256,
+                       "firstname": "Roberts",
+                       "lastname": "Beasley",
+                       "age": 34,
+                       "gender": "F",
+                       "address": "305 Kings Hwy",
+                       "employer": "Quintity",
+                       "email": "robertsbeasley@quintity.com",
+                       "city": "Hayden",
+                       "state": "PA"
+                   }
+               }
+           ]
+       }
+   }
+   ```
+
+#### query/match_phrase 不拆分匹配查询
+
+将需要匹配的值当成一整个单（不进行拆分）进行检索。
+
+* `match_phrase` 是做短语匹配，只要文本中包含匹配条件，就能匹配到。
+* 文本字段的匹配，使用 `keyword`，匹配的条件就是要显示字段的全部值，要进行精确匹配的。
+
+```shell
+GET http://192.168.56.56:9200/bank/_search
+{
+  "query": {
+    "match_phrase": {
+      "address": "mill road" # 不要匹配只有 mill 或只有 road 的，要匹配 mill road 一整个子串
+    }
+  }
+}
+
+# 返回
+{
+    "took": 12,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 1,
+            "relation": "eq"
+        },
+        "max_score": 8.926605,
+        "hits": [
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "970",
+                "_score": 8.926605,
+                "_source": {
+                    "account_number": 970,
+                    "balance": 19648,
+                    "firstname": "Forbes",
+                    "lastname": "Wallace",
+                    "age": 28,
+                    "gender": "M",
+                    "address": "990 Mill Road", # Mill Road
+                    "employer": "Pheast",
+                    "email": "forbeswallace@pheast.com",
+                    "city": "Lopezo",
+                    "state": "AK"
+                }
+            }
+        ]
+    }
+}
+
+GET http://192.168.56.56:9200/bank/_search
+{
+  "query": {
+    "match": {
+      "address.keyword": "mill road" # 精准全部匹配
+    }
+  }
+}
+
+# 返回
+{
+    "took": 14,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 0,
+            "relation": "eq"
+        },
+        "max_score": null,
+        "hits": []
+    }
+}
+
+GET http://192.168.56.56:9200/bank/_search
+{
+  "query": {
+    "match": {
+      "address.keyword": "990 Mill Road" # 精准全部匹配，而且区分大小写
+    }
+  }
+}
+
+# 返回
+{
+    "took": 2,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 1,
+            "relation": "eq"
+        },
+        "max_score": 6.5032897,
+        "hits": [
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "970",
+                "_score": 6.5032897,
+                "_source": {
+                    "account_number": 970,
+                    "balance": 19648,
+                    "firstname": "Forbes",
+                    "lastname": "Wallace",
+                    "age": 28,
+                    "gender": "M",
+                    "address": "990 Mill Road",
+                    "employer": "Pheast",
+                    "email": "forbeswallace@pheast.com",
+                    "city": "Lopezo",
+                    "state": "AK"
+                }
+            }
+        ]
+    }
+}
+```
+
+#### query/multi_match 多字段匹配查询
+
+**state 或者 address 中包含 mill**，并且在查询过程中，会对于查询条件进行分词。
+
+```shell
+GET http://192.168.56.56:9200/bank/_search
+{
+  "query": {
+    "multi_match": {  # 指定多个字段
+      "query": "mill",
+      "fields": [ # state 和 address 有 mill 子串，但不要求都有
+        "state",
+        "address"
+      ]
+    }
+  }
+}
+
+# 返回
+{
+    "took": 3,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 4,
+            "relation": "eq"
+        },
+        "max_score": 5.4032025,
+        "hits": [
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "970",
+                "_score": 5.4032025,
+                "_source": {
+                    "account_number": 970,
+                    "balance": 19648,
+                    "firstname": "Forbes",
+                    "lastname": "Wallace",
+                    "age": 28,
+                    "gender": "M",
+                    "address": "990 Mill Road",
+                    "employer": "Pheast",
+                    "email": "forbeswallace@pheast.com",
+                    "city": "Lopezo",
+                    "state": "AK"
+                }
+            },
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "136",
+                "_score": 5.4032025,
+                "_source": {
+                    "account_number": 136,
+                    "balance": 45801,
+                    "firstname": "Winnie",
+                    "lastname": "Holland",
+                    "age": 38,
+                    "gender": "M",
+                    "address": "198 Mill Lane",
+                    "employer": "Neteria",
+                    "email": "winnieholland@neteria.com",
+                    "city": "Urie",
+                    "state": "IL"
+                }
+            },
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "345",
+                "_score": 5.4032025,
+                "_source": {
+                    "account_number": 345,
+                    "balance": 9812,
+                    "firstname": "Parker",
+                    "lastname": "Hines",
+                    "age": 38,
+                    "gender": "M",
+                    "address": "715 Mill Avenue",
+                    "employer": "Baluba",
+                    "email": "parkerhines@baluba.com",
+                    "city": "Blackgum",
+                    "state": "KY"
+                }
+            },
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "472",
+                "_score": 5.4032025,
+                "_source": {
+                    "account_number": 472,
+                    "balance": 25571,
+                    "firstname": "Lee",
+                    "lastname": "Long",
+                    "age": 32,
+                    "gender": "F",
+                    "address": "288 Mill Street",
+                    "employer": "Comverges",
+                    "email": "leelong@comverges.com",
+                    "city": "Movico",
+                    "state": "MT"
+                }
+            }
+        ]
+    }
+}
+```
+
+#### query/bool/must 复合匹配查询
+
+复合语句必须合并，任何其他查询语句，包括符号语句。这也意味着，复合语句之间可以相互嵌套，可以表达非常复杂的逻辑。
+
+* `must` 必须匹配的条件
+* `must_not` 必须不匹配的条件
+* `should` 应该匹配的条件，满足最好，不满足也可以，满足了得分更高
+* 注意：**should 列举的条件，如果到达会增加相关文档的评分，并不会改变查询的结果。如果 query 中有且只有 should 一种匹配规则，那么 should 的条件就会被作为默认匹配条件去改变查询结果。**
+
+```shell
+# 查询 gender=m，并且 address=mill 的数据
+GET http://192.168.56.56:9200/bank/_search
+{
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "match": {
+                        "address": "mill"
+                    }
+                },
+                {
+                    "match": {
+                        "gender": "M"
+                    }
+                }
+            ]
+        }
+    }
+}
+
+# 查询 gender=m，并且 address=mill，但是 age!=38 的数据
+GET http://192.168.56.56:9200/bank/_search
+{
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "match": {
+                        "gender": "M"
+                    }
+                },
+                {
+                    "match": {
+                        "address": "mill"
+                    }
+                }
+            ],
+            "must_not": [
+                {
+                    "match": {
+                        "age": "38"
+                    }
+                }
+            ]
+        }
+    }
+}
+
+# 查询 gender=m，并且 address=mill，但是 age!=18，lastName 应该等于 Wallace 的数据
+GET http://192.168.56.56:9200/bank/_search
+{
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "match": {
+                        "gender": "M"
+                    }
+                },
+                {
+                    "match": {
+                        "address": "mill"
+                    }
+                }
+            ],
+            "must_not": [
+                {
+                    "match": {
+                        "age": "18"
+                    }
+                }
+            ],
+            "should": [
+                {
+                    "match": {
+                        "lastname": "Wallace"
+                    }
+                }
+            ]
+        }
+    }
+}
+
+```
+
+#### query/filter 查询结果过滤
+
+并不是所有的查询都需要产生分数，特别是哪些仅用于过滤的文档。为了不计算分数，ES 会自动检查场景并且优化查询的执行。must_not 也是一种 filter，所以也不会贡献得分。显然这样查询速度会更快。总结为：
+
+* must 贡献得分
+* should 贡献得分
+* must_not 不贡献得分
+* filter 不贡献得分
+
+```shell
+# 查询所有匹配 address=mill 的文档，然后再根据 10000<=balance<=20000 进行过滤查询结果
+GET http://192.168.56.56:9200/bank/_search
+{
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "match": {
+                        "address": "mill"
+                    }
+                }
+            ],
+            "filter": {
+                "range": {
+                    "balance": {
+                        "gte": "10000",
+                        "lte": "20000"
+                    }
+                }
+            }
+        }
+    }
+}
+
+# 返回
+{
+    "took": 5,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 1,
+            "relation": "eq"
+        },
+        "max_score": 5.4032025,
+        "hits": [
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "970",
+                "_score": 5.4032025,
+                "_source": {
+                    "account_number": 970,
+                    "balance": 19648,
+                    "firstname": "Forbes",
+                    "lastname": "Wallace",
+                    "age": 28,
+                    "gender": "M",
+                    "address": "990 Mill Road",
+                    "employer": "Pheast",
+                    "email": "forbeswallace@pheast.com",
+                    "city": "Lopezo",
+                    "state": "AK"
+                }
+            }
+        ]
+    }
+}
+
+# 单纯的过滤
+GET http://192.168.56.56:9200/bank/_search
+{
+    "query": {
+        "bool": {
+            "filter": {
+                "range": {
+                    "balance": {
+                        "gte": "10000",
+                        "lte": "20000"
+                    }
+                }
+            }
+        }
+    }
+}
+
+# 返回
+{
+    "took": 3,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 213,
+            "relation": "eq"
+        },
+        "max_score": 0.0,
+        "hits": [
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "20",
+                "_score": 0.0, # 不得分
+                "_source": {
+                    "account_number": 20,
+                    "balance": 16418,
+                    "firstname": "Elinor",
+                    "lastname": "Ratliff",
+                    "age": 36,
+                    "gender": "M",
+                    "address": "282 Kings Place",
+                    "employer": "Scentric",
+                    "email": "elinorratliff@scentric.com",
+                    "city": "Ribera",
+                    "state": "WA"
+                }
+            },
+            // ...
+            {
+                "_index": "bank",
+                "_type": "account",
+                "_id": "272",
+                "_score": 0.0, # 不得分
+                "_source": {
+                    "account_number": 272,
+                    "balance": 19253,
+                    "firstname": "Lilly",
+                    "lastname": "Morgan",
+                    "age": 25,
+                    "gender": "F",
+                    "address": "689 Fleet Street",
+                    "employer": "Biolive",
+                    "email": "lillymorgan@biolive.com",
+                    "city": "Sunbury",
+                    "state": "OH"
+                }
+            }
+        ]
+    }
+}
+```
+
+#### query/term 非 text 字段匹配查询
+
+它和 query/match 一样，能匹配某个属性的值，但是 **全文检索字段时用 match**，**其他非 text 字段时用 term**。因为 ES 默认存储 text 值时用分词分析。
+
+#### aggs/aggName 聚合
+
+聚合提供了从数据中分组和提取数据的能力，最简单的聚合方法类似于 SQL 的 `group by` 和 `聚合函数` 等。
+
+在 ES 中，执行搜索返回 hits（命中结果），并且同时返回聚合结果。把已响应的所有命中结果分隔开的能力是非常实用的。可以执行查询和多个聚合，并且在一次使用中得到各自的返回结果，使用一次简洁和简化的 API 可以避免网络往返。
+
+聚合基本语法格式：
+
+```shell
+"aggs":{ # 聚合
+    "aggs_name":{ # 聚合的名字，方便展示在结果集中
+        "AGG_TYPE":{} # 聚合的类型(avg,term,terms)
+     }
+}
+# terms 看值的可能性分布，会合并锁查字段，给出计数即可
+# avg   看值的分布平均
+```
+
+**搜索 address 中包含 mill 的所有人的年龄分布以及平均年龄，但不显示这些人的详情：**
+
+```shell
+GET http://192.168.56.56:9200/bank/_search
+{
+  "query": { # 查询出包含 mill 的
+    "match": {
+      "address": "Mill"
+    }
+  },
+  "aggs": { # 基于查询聚合
+    "ageAgg": {  # 第一个聚合，聚合的名字，可以随便起
+      "terms": { # 看值的可能性分布
+        "field": "age",
+        "size": 10
+      }
+    },
+    "ageAvg": {  # 第二个聚合
+      "avg": { # 看 age 值的平均
+        "field": "age"
+      }
+    },
+    "balanceAvg": { # 第三个聚合
+      "avg": { # 看 balance 的平均
+        "field": "balance"
+      }
+    }
+  },
+  "size": 0  # 不看详情
+}
+
+# 返回
+{
+    "took": 11,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 4, # 命中 4 条记录
+            "relation": "eq"
+        },
+        "max_score": null,
+        "hits": []
+    },
+    "aggregations": {
+        "ageAgg": { # ageAgg 聚合结果
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+                {
+                    "key": 38, # age=38 有 2 条记录
+                    "doc_count": 2
+                },
+                {
+                    "key": 28,
+                    "doc_count": 1
+                },
+                {
+                    "key": 32,
+                    "doc_count": 1
+                }
+            ]
+        },
+        "ageAvg": {
+            "value": 34.0
+        },
+        "balanceAvg": {
+            "value": 25208.0
+        }
+    }
+}
+
+```
+
+#### aggs/aggName/aggs/aggName 子聚合
+
+**按照年龄聚合，求这些年龄段的这些人的平均薪资：**
+
+```shell
+GET http://192.168.56.56:9200/bank/_search
+{
+    "query": {
+        "match_all": {}
+    },
+    "aggs": {
+        "ageAgg": {
+            "terms": { # 看值的可能性分布
+                "field": "age",
+                "size": 100
+            },
+            "aggs": { # 与 terms 并列
+                "ageAvg": {
+                    "avg": {
+                        "field": "balance"
+                    }
+                }
+            }
+        }
+    },
+    "size": 0
+}
+
+# 返回
+{
+    "took": 60,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 1000,
+            "relation": "eq"
+        },
+        "max_score": null,
+        "hits": []
+    },
+    "aggregations": {
+        "ageAgg": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+                {
+                    "key": 31,
+                    "doc_count": 61,
+                    "ageAvg": {
+                        "value": 28312.918032786885
+                    }
+                },
+                // ...
+                {
+                    "key": 29,
+                    "doc_count": 35,
+                    "ageAvg": {
+                        "value": 29483.14285714286
+                    }
+                }
+            ]
+        }
+    }
+}
+```
+
+**查出所有年龄分布，并且这些年龄段中 M 的平均薪资和 F 的平均薪资以及这个年龄段的总体平均薪资：**
+
+```shell
+GET http://192.168.56.56:9200/bank/_search
+{
+    "query": {
+        "match_all": {}
+    },
+    "aggs": {
+        "ageAgg": {
+            "terms": { # age 的分布
+                "field": "age",
+                "size": 100
+            },
+            "aggs": { # 子聚合
+                "genderAgg": { #
+                    "terms": { # gender 的分布
+                        "field": "gender.keyword" # 使用 .keyword
+                    },
+                    "aggs": {
+                        "balanceAvg": {
+                            "avg": {
+                                "field": "balance"
+                            }
+                        }
+                    }
+                },
+                "ageBalanceAvg": { #
+                    "avg": {
+                        "field": "balance"
+                    }
+                }
+            }
+        }
+    },
+    "size": 0
+}
+
+# 返回
+{
+    "took": 82,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 1000,
+            "relation": "eq"
+        },
+        "max_score": null,
+        "hits": []
+    },
+    "aggregations": {
+        "ageAgg": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+                {
+                    "key": 31,
+                    "doc_count": 61,
+                    "genderAgg": {
+                        "doc_count_error_upper_bound": 0,
+                        "sum_other_doc_count": 0,
+                        "buckets": [
+                            {
+                                "key": "M",
+                                "doc_count": 35,
+                                "balanceAvg": {
+                                    "value": 29565.628571428573
+                                }
+                            },
+                            {
+                                "key": "F",
+                                "doc_count": 26,
+                                "balanceAvg": {
+                                    "value": 26626.576923076922
+                                }
+                            }
+                        ]
+                    },
+                    "ageBalanceAvg": {
+                        "value": 28312.918032786885
+                    }
+                },
+                // ...
+                {
+                    "key": 29,
+                    "doc_count": 35,
+                    "genderAgg": {
+                        "doc_count_error_upper_bound": 0,
+                        "sum_other_doc_count": 0,
+                        "buckets": [
+                            {
+                                "key": "M",
+                                "doc_count": 23,
+                                "balanceAvg": {
+                                    "value": 29943.17391304348
+                                }
+                            },
+                            {
+                                "key": "F",
+                                "doc_count": 12,
+                                "balanceAvg": {
+                                    "value": 28601.416666666668
+                                }
+                            }
+                        ]
+                    },
+                    "ageBalanceAvg": {
+                        "value": 29483.14285714286
+                    }
+                }
+            ]
+        }
+    }
+}
+```
+
+#### nested 对象聚合
+
+...
+
+## Mapping 字段映射
+
+
+
+
+
+
+
+## 分词
+
+
+
+## ES REST CLIENT
+
+
+
+## SpringBoot 整合 ES
+
+
 
 
 
