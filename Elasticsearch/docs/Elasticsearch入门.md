@@ -61,7 +61,7 @@
 * Elasticsearch 8.x 中，不再支持 URL 中的 type 参数。 
 * 解决方法：将索引从多类型迁移到单类型，每种类型文档一个独立索引。
 
-## Docker 安装
+## Docker 安装 ES
 
 * 下载安装 elasticsearch（存储和检索）和 kibana（可视化检索）
 
@@ -98,10 +98,10 @@
   # 9200 是用户交互端口，9300 是集群心跳端口
   # 第一个 -e，指定是单阶段运行
   # 第二个 -e，指定占用的内存大小，生产时可以设置 32G
-  # 考虑到虚拟机情况，设置内存不超过 128m
+  # 考虑到虚拟机情况，设置内存不超过 512m
   docker run --name elasticsearch7.8.0 -p 9200:9200 -p 9300:9300 \
   -e "discovery.type=single-node" \
-  -e ES_JAVA_OPTS="-Xms64m -Xmx128m" \
+  -e ES_JAVA_OPTS="-Xms64m -Xmx512m" \
   -v /docker/elasticsearch7.8.0/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml \
   -v /docker/elasticsearch7.8.0/data:/usr/share/elasticsearch/data \
   -v /docker/elasticsearch7.8.0/plugins:/usr/share/elasticsearch/plugins \
@@ -155,6 +155,41 @@
   ```shell
   访问 http://192.168.56.56:5601
   返回可视化界面
+  ```
+
+## Docker 安装 Nginx
+
+* 启动一个 Nginx 实例，复制出配置文件
+
+  ```shell
+  # 不存在时会自动下载
+  docker run -p 80:80 --name nginx1.10 -d nginx:1.10
+  # 创建存放 nginx 的文件夹
+  mkdir docker/nginx1.10
+  # 把容器内的配置文件拷贝到当前目录
+  cd docker/
+  docker container cp nginx1.10:/etc/nginx .
+  # 暂停删除容器，修改文件名称为 conf，并移动到 nginx1.10 文件夹
+  docker stop nginx1.10
+  docker rm nginx1.10
+  mv nginx conf
+  mv conf nginx1.10/
+  ```
+
+* 启动 Nginx
+
+  ```shell
+  docker run -p 80:80 --name nginx1.10 -v /docker/nginx1.10/html:/usr/share/nginx/html -v /docker/nginx1.10/logs:/var/log/nginx -v /docker/nginx1.10/conf:/etc/nginx -d nginx:1.10
+  
+  # 设置开机启动
+  docker update nginx1.10 --restart=always
+  ```
+
+* 测试 Nginx
+
+  ```shell
+  访问 http://192.168.56.56
+  返回界面
   ```
 
 ## 初步检索
@@ -1948,29 +1983,1029 @@ GET http://192.168.56.56:9200/bank/_search
 
 #### nested 对象聚合
 
-...
+参考：[Elasticsearch 中使用 nested 类型的内嵌对象](https://blog.csdn.net/kabike/article/details/101460578)
 
 ## Mapping 字段映射
 
+映射是定义文档及其包含的字段的存储和索引方式的过程。每个文档都是字段的集合，每个字段都有自己的 [数据类型](https://www.elastic.co/guide/en/elasticsearch/reference/7.x/mapping-types.html)。映射数据时，将创建一个映射定义，其中包含与文档相关的字段列表。
+
+### 字段类型
+
+核心类型：
+
+* 字符串
+  * `text` 用于全文索引，搜索时会自动使用分词器进行分词再匹配
+  * `keyword`  部分此，搜索时精确完整匹配
+* 数字类型
+  * 整型：byte，short，integer，long
+  * 浮点型：float, half_float, scaled_float，double
+* 日期类型
+* 布尔类型
+* 二进制类型
+
+复杂类型：
+
+* 数组类型
+* 对象类型
+* 嵌套类型
+
+地理类型：
+
+* 地理坐标
+* 地理图标
+
+[详细可参考](https://www.elastic.co/guide/en/elasticsearch/reference/7.x/mapping-types.html)
+
+### 查看映射
+
+使用 mapping 来定义：
+
+* 哪些字符串属性应该被看做 **全文本属性**（full text fields）；
+* 哪些属性包含数字，日期或地理位置；
+* 文档中的所有属性是否都嫩被索引（all 配置）；
+* 日期的格式；
+* 自定义映射规则来执行动态添加属性；
+
+```shell
+# 查看索引
+GET /bank/_mapping
+{
+  "bank" : {
+    "mappings" : {
+      "properties" : {
+        "account_number" : {
+          "type" : "long" # long 类型
+        },
+        "address" : {
+          "type" : "text", # text 类型，会进行全文检索，进行分词匹配
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword", # 精确匹配
+              "ignore_above" : 256
+            }
+          }
+        },
+        "age" : {
+          "type" : "long"
+        },
+        "balance" : {
+          "type" : "long"
+        },
+        "city" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "email" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "employer" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "firstname" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "gender" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "lastname" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "state" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+```
+
+### 创建映射
+
+```shell
+# 创建映射
+PUT /my_index
+{
+  "mappings": {
+    "properties": {
+      "age": {
+        "type": "integer"
+      },
+      "email": {
+        "type": "keyword"
+      },
+      "name": {
+        "type": "text"
+      }
+    }
+  }
+}
+
+# 输出
+{
+  "acknowledged" : true,
+  "shards_acknowledged" : true,
+  "index" : "my_index"
+}
+
+# 查看映射
+GET /my_index
+
+# 输出
+{
+  "my_index" : {
+    "aliases" : { },
+    "mappings" : {
+      "properties" : {
+        "age" : {
+          "type" : "integer"
+        },
+        "email" : {
+          "type" : "keyword"
+        },
+        "name" : {
+          "type" : "text"
+        }
+      }
+    },
+    "settings" : {
+      "index" : {
+        "creation_date" : "1617960990447",
+        "number_of_shards" : "1",
+        "number_of_replicas" : "1",
+        "uuid" : "KgYd5GOPR0uc5kEbUCeBDg",
+        "version" : {
+          "created" : "7080099"
+        },
+        "provided_name" : "my_index"
+      }
+    }
+  }
+}
+
+# 添加新的字段映射
+PUT /my_index/_mapping
+{
+  "properties": {
+    "employee-id": {
+      "type": "keyword",
+      "index": false # 表示字段不能被检索
+    }
+  }
+}
+```
+
+### 更新映射
+
+对于已经存在的字段映射，我们不能更新，因为更改现有字段可能会使已经建立索引的数据无效。要更新必须创建新的索引，进行数据迁移。具体操作为：
+
+```shell
+# 先创建新的索引，然后进行数据迁移
+
+# 6.0 之后的写法
+POST reindex
+{
+  "source":{
+      "index":"old_index"
+   },
+  "dest":{
+      "index":"new_index"
+   }
+}
 
 
+# 老版本写法
+POST reindex
+{
+  "source":{
+      "index":"old_index",
+      "type":"old_type"
+   },
+  "dest":{
+      "index":"new_index"
+   }
+}
+```
 
+案例： 原来 bank 索引的类型为 account，新版本没有类型了，所以我们把它去掉。
 
+```shell
+GET /bank/_search
+# 输出
+{
+  "took" : 19,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 1000,
+      "relation" : "eq"
+    },
+    "max_score" : 1.0,
+    "hits" : [
+      {
+        "_index" : "bank",
+        "_type" : "account", # 有类型
+        "_id" : "1",
+        "_score" : 1.0,
+        "_source" : {
+          "account_number" : 1,
+          "balance" : 39225,
+          "firstname" : "Amber",
+          "lastname" : "Duke",
+          "age" : 32,
+          "gender" : "M",
+          "address" : "880 Holmes Lane",
+          "employer" : "Pyrami",
+          "email" : "amberduke@pyrami.com",
+          "city" : "Brogan",
+          "state" : "IL"
+        }
+      },
+      // ...
+     ]
+  }
+}
 
+# 先建立新的索引
+PUT /newbank
+{
+  "mappings": {
+    "properties": {
+      "account_number": {
+        "type": "long"
+      },
+      "address": {
+        "type": "text"
+      },
+      "age": {
+        "type": "integer"
+      },
+      "balance": {
+        "type": "long"
+      },
+      "city": {
+        "type": "keyword"
+      },
+      "email": {
+        "type": "keyword"
+      },
+      "employer": {
+        "type": "keyword"
+      },
+      "firstname": {
+        "type": "text"
+      },
+      "gender": {
+        "type": "keyword"
+      },
+      "lastname": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "state": {
+        "type": "keyword"
+      }
+    }
+  }
+}
+
+# 查看新的映射
+GET /newbank/_mapping
+
+# 返回
+{
+  "newbank" : {
+    "mappings" : {
+      "properties" : {
+        "account_number" : {
+          "type" : "long"
+        },
+        "address" : {
+          "type" : "text"
+        },
+        "age" : {
+          "type" : "integer" # 改为了 integer
+        },
+        "balance" : {
+          "type" : "long"
+        },
+        "city" : {
+          "type" : "keyword"
+        },
+        "email" : {
+          "type" : "keyword"
+        },
+        "employer" : {
+          "type" : "keyword"
+        },
+        "firstname" : {
+          "type" : "text"
+        },
+        "gender" : {
+          "type" : "keyword"
+        },
+        "lastname" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "state" : {
+          "type" : "keyword"
+        }
+      }
+    }
+  }
+
+# 进行迁移
+POST _reindex
+{
+  "source": {
+    "index": "bank",
+    "type": "account"
+  },
+  "dest": {
+    "index": "newbank"
+  }
+}
+# 输出
+#! Deprecation: [types removal] Specifying types in reindex requests is deprecated.
+{
+  "took" : 918,
+  "timed_out" : false,
+  "total" : 1000,
+  "updated" : 0,
+  "created" : 1000,
+  "deleted" : 0,
+  "batches" : 1,
+  "version_conflicts" : 0,
+  "noops" : 0,
+  "retries" : {
+    "bulk" : 0,
+    "search" : 0
+  },
+  "throttled_millis" : 0,
+  "requests_per_second" : -1.0,
+  "throttled_until_millis" : 0,
+  "failures" : [ ]
+}
+
+# 查看 newbank
+GET /newbank/_search
+{
+  "took" : 511,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 1000,
+      "relation" : "eq"
+    },
+    "max_score" : 1.0,
+    "hits" : [
+      {
+        "_index" : "newbank",
+        "_type" : "_doc", # 没有了类型
+        "_id" : "1",
+        "_score" : 1.0,
+        "_source" : {
+          "account_number" : 1,
+          "balance" : 39225,
+          "firstname" : "Amber",
+          "lastname" : "Duke",
+          "age" : 32,
+          "gender" : "M",
+          "address" : "880 Holmes Lane",
+          "employer" : "Pyrami",
+          "email" : "amberduke@pyrami.com",
+          "city" : "Brogan",
+          "state" : "IL"
+        }
+      },
+       // ...
+     ]
+  }
+}
+```
 
 ## 分词
 
+一个 tokenizer（分词器）接收一个字符流，将之分割为独立的`tokens`（**词元**，通常是独立的单词），然后输出 tokens 流。
 
+例如：whitespace tokenizer 遇到空白字符时分割文本。它会将文本`"Quick brown fox!"`分割为`[Quick,brown,fox!]`。
+
+该 tokenizer（分词器）还负责记录各个 terms(词条) 的顺序或 position 位置（用于 phrase 短语和 word proximity 词近邻查询），以及 term（词条）所代表的原始 word（单词）的 start（起始）和 end（结束）的 character offsets（字符串偏移量）（用于高亮显示搜索的内容）。
+
+elasticsearch提供了很多**内置的分词器**（标准分词器），可以用来构建 custom analyzers（自定义分词器）。[更多可参考](https://www.elastic.co/guide/en/elasticsearch/reference/7.6/analysis.html)
+
+标准分词器的使用：
+
+```shell
+POST _analyze
+{
+  "analyzer": "standard",
+  "text": "The 2 Brown-Foxes bone."
+}
+# 输出
+{
+  "tokens" : [
+    {
+      "token" : "the",
+      "start_offset" : 0,
+      "end_offset" : 3,
+      "type" : "<ALPHANUM>",
+      "position" : 0
+    },
+    {
+      "token" : "2",
+      "start_offset" : 4,
+      "end_offset" : 5,
+      "type" : "<NUM>",
+      "position" : 1
+    },
+    {
+      "token" : "brown",
+      "start_offset" : 6,
+      "end_offset" : 11,
+      "type" : "<ALPHANUM>",
+      "position" : 2
+    },
+    {
+      "token" : "foxes",
+      "start_offset" : 12,
+      "end_offset" : 17,
+      "type" : "<ALPHANUM>",
+      "position" : 3
+    },
+    {
+      "token" : "bone",
+      "start_offset" : 18,
+      "end_offset" : 22,
+      "type" : "<ALPHANUM>",
+      "position" : 4
+    }
+  ]
+}
+```
+
+所有的语言分词，默认使用的都是 “Standard Analyzer”，但是这些分词器针对于中文的分词，并不友好。为此需要安装中文的分词器。推荐使用 [elasticsearch-analysis-ik](https://github.com/medcl/elasticsearch-analysis-ik)。
+
+### 安装 ik 分词器
+
+1. 查看 ES 版本
+
+   ```shell
+   http://192.168.56.56:9200/
+   {
+   "name": "0f6d6c60bc96",
+   "cluster_name": "elasticsearch",
+   "cluster_uuid": "sDTdW7KnQayVrFC5ioijiQ",
+   "version": {
+   "number": "7.8.0", # 7.8.0
+   "build_flavor": "default",
+   "build_type": "docker",
+   "build_hash": "757314695644ea9a1dc2fecd26d1a43856725e65",
+   "build_date": "2020-06-14T19:35:50.234439Z",
+   "build_snapshot": false,
+   "lucene_version": "8.5.1",
+   "minimum_wire_compatibility_version": "6.8.0",
+   "minimum_index_compatibility_version": "6.0.0-beta1"
+   },
+   "tagline": "You Know, for Search"
+   }
+   ```
+
+2. 由于使用 Docker 安装 ES 时，进行了路径映射，所以直接进入 ES 的 plugins 目录
+
+   ```shell
+   cd docker/elasticsearch7.8.0/plugins
+   # 安装 waget
+   yum install wget
+   # 安装 unzip
+   yum install unzip
+   # 下载 ik 压缩包
+   wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v7.8.0/elasticsearch-analysis-ik-7.8.0.zip
+   # 解压 ik
+   unzip elasticsearch-analysis-ik-7.8.0.zip -d ik
+   # 更改权限
+   chmod -R 777 ik
+   # 删除 ik 压缩包
+   rm -rf elasticsearch-analysis-ik-7.8.0.zip
+   # 重启 ES
+   docker restart elasticsearch7.8.0
+   ```
+
+### 测试分词器
+
+```shell
+# 使用默认分词器
+GET _analyze
+{
+   "text":"我是中国人"
+}
+# 输出
+{
+  "tokens" : [
+    {
+      "token" : "我",
+      "start_offset" : 0,
+      "end_offset" : 1,
+      "type" : "<IDEOGRAPHIC>",
+      "position" : 0
+    },
+    {
+      "token" : "是",
+      "start_offset" : 1,
+      "end_offset" : 2,
+      "type" : "<IDEOGRAPHIC>",
+      "position" : 1
+    },
+    {
+      "token" : "中",
+      "start_offset" : 2,
+      "end_offset" : 3,
+      "type" : "<IDEOGRAPHIC>",
+      "position" : 2
+    },
+    {
+      "token" : "国",
+      "start_offset" : 3,
+      "end_offset" : 4,
+      "type" : "<IDEOGRAPHIC>",
+      "position" : 3
+    },
+    {
+      "token" : "人",
+      "start_offset" : 4,
+      "end_offset" : 5,
+      "type" : "<IDEOGRAPHIC>",
+      "position" : 4
+    }
+  ]
+}
+
+# 使用 ik
+GET _analyze
+{
+  "analyzer": "ik_smart", 
+   "text":"我是中国人"
+}
+# 输出
+{
+  "tokens" : [
+    {
+      "token" : "我",
+      "start_offset" : 0,
+      "end_offset" : 1,
+      "type" : "CN_CHAR",
+      "position" : 0
+    },
+    {
+      "token" : "是",
+      "start_offset" : 1,
+      "end_offset" : 2,
+      "type" : "CN_CHAR",
+      "position" : 1
+    },
+    {
+      "token" : "中国人",
+      "start_offset" : 2,
+      "end_offset" : 5,
+      "type" : "CN_WORD",
+      "position" : 2
+    }
+  ]
+}
+
+GET _analyze
+{
+   "analyzer": "ik_max_word", 
+   "text":"我是中国人"
+}
+# 输出
+{
+  "tokens" : [
+    {
+      "token" : "我",
+      "start_offset" : 0,
+      "end_offset" : 1,
+      "type" : "CN_CHAR",
+      "position" : 0
+    },
+    {
+      "token" : "是",
+      "start_offset" : 1,
+      "end_offset" : 2,
+      "type" : "CN_CHAR",
+      "position" : 1
+    },
+    {
+      "token" : "中国人",
+      "start_offset" : 2,
+      "end_offset" : 5,
+      "type" : "CN_WORD",
+      "position" : 2
+    },
+    {
+      "token" : "中国",
+      "start_offset" : 2,
+      "end_offset" : 4,
+      "type" : "CN_WORD",
+      "position" : 3
+    },
+    {
+      "token" : "国人",
+      "start_offset" : 3,
+      "end_offset" : 5,
+      "type" : "CN_WORD",
+      "position" : 4
+    }
+  ]
+}
+```
+
+### 自定义词库
+
+* 在 Nginx 的映射文件夹的 html 文件夹下创建 es 文件夹，用于保存 es相关数据
+
+  ```shell
+  mkdir es
+  ```
+
+* 创建 fenci.txt 文件，将分词数据存放在此文件中
+
+  ```shell
+  cd es/
+  # 加入 高富帅 刘德华子 等自定义词
+  vi fenci.txt
+  访问 http://192.168.56.56/es/fenci.txt
+  ```
+
+* 修改 plugins/ik/config 中的 IKAnalyzer.cfg.xml
+
+  ```shell
+  <?xml version="1.0" encoding="UTF-8"?>
+  <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+  <properties>
+          <comment>IK Analyzer 扩展配置</comment>
+          <!--用户可以在这里配置自己的扩展字典 -->
+          <entry key="ext_dict"></entry>
+          <!--用户可以在这里配置自己的扩展停止词字典-->
+          <entry key="ext_stopwords"></entry>
+          <!--用户可以在这里配置远程扩展字典 -->
+          <entry key="remote_ext_dict">http://192.168.56.56/es/fenci.txt</entry>
+          <!--用户可以在这里配置远程扩展停止词字典-->
+          <!-- <entry key="remote_ext_stopwords">words_location</entry> -->
+  </properties>
+  
+  # 重启 ES
+  docker restart elasticsearch7.8.0
+  ```
+
+注意：更新完成后，ES 只会对于新增的数据用更新分词。历史数据是不会重新分词的。如果想要历史数据重新分词，需要执行 `POST my_index/_update_by_query?conflicts=proceed`
+
+测试：
+
+```shell
+GET _analyze
+{
+  "analyzer": "ik_smart", 
+   "text":"我是高富帅刘德华子"
+}
+# 输出
+{
+  "tokens" : [
+    {
+      "token" : "我",
+      "start_offset" : 0,
+      "end_offset" : 1,
+      "type" : "CN_CHAR",
+      "position" : 0
+    },
+    {
+      "token" : "是",
+      "start_offset" : 1,
+      "end_offset" : 2,
+      "type" : "CN_CHAR",
+      "position" : 1
+    },
+    {
+      "token" : "高富帅",
+      "start_offset" : 2,
+      "end_offset" : 5,
+      "type" : "CN_WORD",
+      "position" : 2
+    },
+    {
+      "token" : "刘德华子",
+      "start_offset" : 5,
+      "end_offset" : 9,
+      "type" : "CN_WORD",
+      "position" : 3
+    }
+  ]
+}
+```
 
 ## ES REST CLIENT
 
+Java 操作 ES 有两种方式：
 
+* 通过 9300 端口，以 TCP 方式
+  * 使用 spring-data-elasticsearch:transport-api.jar
+  * springboot 版本不同，ransport-api.jar 不同，不能适配 ES 版本
+  * 7.x 已经不建议使用，8 以后就要废弃
+  * 具体可参考：[Java API (deprecated)](https://www.elastic.co/guide/en/elasticsearch/client/java-api/current/index.html)
+* 通过 9200 端口，以 HTTP 方式
+  * jestClient: 非官方，更新慢
+  * HttpClient、RestTemplate：模拟 HTTP 请求，ES 很多操作需要自己封装，麻烦
+  * **`Elasticsearch-Rest-Client`**：官方 RestClient，封装了 ES 操作，API 层次分明，上手简单，推荐使用
+  * Elasticsearch-Rest-Client 具体可参考：[Java REST Client](https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/index.html)，并且使用 [Java High Level REST Client](https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/java-rest-high.html)，它与 [Java Low Level REST Client](https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/java-rest-low.html) 的区别类似于 MyBatis 和 JDBC。
 
 ## SpringBoot 整合 ES
 
+* 创建 SpringBoot 项目，选择 Web 依赖，但是不要选择 ES 依赖
 
+* 导入依赖
 
+  ```xml
+  <!-- ES Rest API-->
+  <dependency>
+      <groupId>org.elasticsearch.client</groupId>
+      <artifactId>elasticsearch-rest-high-level-client</artifactId>
+      <version>7.8.0</version>
+  </dependency>
+  
+  # 在 spring-boot-dependencies 中所依赖的ES版本位 6.8.5，要改掉
+  <properties>
+      <java.version>1.8</java.version>
+      <spring-cloud.version>Hoxton.SR8</spring-cloud.version>
+      <elasticsearch.version>7.8.0</elasticsearch.version>
+  </properties>
+  ```
 
+* 编写 Elasticsearch 配置类
+
+  ```java
+  package cn.parzulpan.shopping.search.config;
+  
+  import org.apache.http.HttpHost;
+  import org.elasticsearch.client.RequestOptions;
+  import org.elasticsearch.client.RestClient;
+  import org.elasticsearch.client.RestClientBuilder;
+  import org.elasticsearch.client.RestHighLevelClient;
+  import org.springframework.context.annotation.Bean;
+  import org.springframework.context.annotation.Configuration;
+  
+  /**
+   * @author parzulpan
+   * @version 1.0
+   * @date 2021-04
+   * @project shopping
+   * @package cn.parzulpan.shopping.search.config
+   * @desc Elasticsearch 配置类
+   */
+  
+  @Configuration
+  public class ShoppingElasticsearchConfig {
+      // 请求测试项，比如 es 添加了安全访问规则，访问 es 需要添加一个安全头，就可以通过 requestOptions 设置
+      // 官方建议把 requestOptions 创建成单实例
+      public static final RequestOptions COMMON_OPTIONS;
+      static {
+          RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+          COMMON_OPTIONS = builder.build();
+      }
+  
+  
+      @Bean
+      public RestHighLevelClient restHighLevelClient() {
+          RestClientBuilder builder = null;
+          // 可以指定多个 ES
+          builder = RestClient.builder(new HttpHost("192.168.56.56", 9200, "http"));
+          return new RestHighLevelClient(builder);
+      }
+  
+  }
+  ```
+
+* 实例测试
+
+  ```java
+  package cn.parzulpan.shopping.search;
+  
+  import org.elasticsearch.client.RestHighLevelClient;
+  import org.junit.jupiter.api.Test;
+  import org.springframework.beans.factory.annotation.Autowired;
+  import org.springframework.boot.test.context.SpringBootTest;
+  
+  @SpringBootTest
+  class ShoppingSearchApplicationTests {
+  
+      @Autowired
+      RestHighLevelClient client;
+  
+      @Test
+      void contextLoads() {
+  
+      }
+  
+      @Test
+      void testRestClient() {
+          System.out.println(client);
+      }
+  
+  }
+  ```
+
+* 保存数据
+
+  ```java
+  @Data
+  class User {
+      private String userName;
+      private Integer age;
+      private String gender;
+  }
+  
+  /**
+       * https://www.elastic.co/guide/en/elasticsearch/client/java-rest/7.x/java-rest-high-create-index.html
+       * 保存方式分为同步和异步
+       */
+  @Test
+  void indexData() throws IOException {
+      // 设置索引
+      IndexRequest users = new IndexRequest("users");
+      users.id("1");
+  
+      //设置要保存的内容，指定数据和类型
+      // 方式一
+      //        users.source("userName", "zhang", "age", 18, "gender", "男");
+      // 方式二
+      User user = new User();
+      user.setUserName("wang");
+      user.setAge(20);
+      user.setGender("女");
+      Gson gson = new Gson();
+      String userJson = gson.toJson(user);
+      users.source(userJson, XContentType.JSON);
+  
+      // 执行创建索引和保存数据
+      IndexResponse index = client.index(users, ShoppingElasticsearchConfig.COMMON_OPTIONS);
+  
+      System.out.println(index);
+  }
+  ```
+
+* 获取数据
+
+  ```java
+  /**
+       * ES 获取数据
+       * https://www.elastic.co/guide/en/elasticsearch/client/java-rest/7.x/java-rest-high-search.html
+       * 搜索 address 中包含 mill 的所有人的年龄分布以及平均年龄
+       * GET /bank/_search
+       * {
+       *   "query": { # 查询出包含 mill 的
+       *     "match": {
+       *       "address": "Mill"
+       *     }
+       *   },
+       *   "aggs": { # 基于查询聚合
+       *     "ageAgg": {  # 第一个聚合，聚合的名字，可以随便起
+       *       "terms": { # 看值的可能性分布
+       *         "field": "age",
+       *         "size": 10
+       *       }
+       *     },
+       *     "ageAvg": {  # 第二个聚合
+       *       "avg": { # 看 age 值的平均
+       *         "field": "age"
+       *       }
+       *     },
+       *     "balanceAvg": { # 第三个聚合
+       *       "avg": { # 看 balance 的平均
+       *         "field": "balance"
+       *       }
+       *     }
+       *   },
+       *   "size": 0  # 不看详情
+       * }
+       */
+  @Test
+  void find() throws IOException {
+      // 1. 创建检索请求
+      SearchRequest searchRequest = new SearchRequest();
+      searchRequest.indices("bank");
+      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+      // 构造检索条件
+      //        searchSourceBuilder.query();
+      //        searchSourceBuilder.from();
+      //        searchSourceBuilder.size();
+      //        searchSourceBuilder.aggregation();
+      searchSourceBuilder.query(QueryBuilders.matchQuery("address", "mill"));
+      // 构建第一个聚合条件：看值的可能性分布
+      TermsAggregationBuilder ageAgg = AggregationBuilders.terms("ageAgg").field("age").size(10);
+      searchSourceBuilder.aggregation(ageAgg);
+      // 构建第二个聚合条件：看 age 值的平均
+      AvgAggregationBuilder ageAvg = AggregationBuilders.avg("ageAvg").field("age");
+      searchSourceBuilder.aggregation(ageAvg);
+      // 构建第三个聚合条件：看 balance 的平均
+      AvgAggregationBuilder balanceAvg = AggregationBuilders.avg("balanceAvg").field("balance");
+      searchSourceBuilder.aggregation(balanceAvg);
+      // 不看详情
+      //        searchSourceBuilder.size(0);
+  
+      System.out.println("searchSourceBuilder " + searchSourceBuilder.toString());
+      searchRequest.source(searchSourceBuilder);
+  
+      // 2. 执行检索
+      SearchResponse response = client.search(searchRequest, ShoppingElasticsearchConfig.COMMON_OPTIONS);
+  
+      // 3. 分析响应结果
+      System.out.println("response " + response.toString());
+      // 3.1 将响应结果转换为 Bean
+      SearchHits hits = response.getHits();
+      SearchHit[] hits1 = hits.getHits();
+      Gson gson = new Gson();
+      for (SearchHit hit: hits1) {
+          System.out.println("id: " + hit.getId());
+          System.out.println("index: " + hit.getIndex());
+          String sourceAsString = hit.getSourceAsString();
+          System.out.println("sourceAsString: " + sourceAsString);
+          System.out.println("Account: " + gson.fromJson(sourceAsString, Account.class));
+      }
+      // 3.2 获取检索到的分析信息
+      Aggregations aggregations = response.getAggregations();
+      Terms ageAgg1 = aggregations.get("ageAgg");
+      for (Terms.Bucket bucket : ageAgg1.getBuckets()) {
+          System.out.println("ageAgg: " + bucket.getKeyAsString() + " => " + bucket.getDocCount());
+      }
+      Avg ageAvg1 = aggregations.get("ageAvg");
+      System.out.println("ageAvg: " + ageAvg1.getValue());
+      Avg balanceAvg1 = aggregations.get("balanceAvg");
+      System.out.println("balanceAvg: " + balanceAvg1.getValue());
+  }
+  ```
 
 ## 总结和练习
 
